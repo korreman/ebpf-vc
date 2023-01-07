@@ -19,14 +19,6 @@ impl Reg {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum WordSize {
-    B8,
-    B16,
-    B32,
-    B64,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Cc {
     Eq,
     Gt,
@@ -75,10 +67,10 @@ pub type MemRef = (Reg, Option<Offset>);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Instr {
-    Unary(WordSize, UnAlu, Reg),
-    Binary(WordSize, BinAlu, Reg, RegImm),
-    Store(WordSize, MemRef, RegImm),
-    Load(WordSize, Reg, MemRef),
+    Unary(UnAlu, Reg),
+    Binary(BinAlu, Reg, RegImm),
+    Store(MemRef, RegImm),
+    Load(Reg, MemRef),
     LoadImm(Reg, Imm),
     LoadMapFd(Reg, Imm),
     Call(Imm),
@@ -94,7 +86,7 @@ pub enum Continuation {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Block {
-    pub precond: Option<Formula>,
+    pub pre_assert: Option<Formula>,
     pub body: Vec<Instr>,
     pub next: Continuation,
 }

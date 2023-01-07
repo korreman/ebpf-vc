@@ -1,25 +1,28 @@
 //! Verification condition generation.
 
+use std::mem::swap;
+
 use crate::ast::*;
 use crate::logic::*;
 
-pub fn vc(module: Module) -> Formula {
-    // 1. Collect all blocks that end with an exit.
-    // 2. Perform a reverse breadth-first traversal of CFG. For each block:
-    // a. Acquire the correct post-conditions for that block.
-    //    Exit: No conditions, just True.
-    //    Jmp: Pre-condition of the target block.
-    //    Jcc: Conjunction of the pre-conditions of both targets,
-    //         with the jump condition tacked on to each respectively.
-    // b. Perform WP on the precondition to obtain P.
-    // c.
-    //    - If the block has no asserted preconditions,
-    //      assign P to the block as a precondition.
-    //    - If the block does have asserted preconditions A,
-    //      require (somewhere?) that P => A.
-    //    - If the block as already been visited but has no asserted precondition, abort.
-    // c. Find all blocks that may jump to the current one,
-    //    add them to the next round.
+pub fn vc(module: Module) -> Option<Formula> {
+    // Create copy of the CFG with the edges reversed.
+    let mut reverse_graph: Vec<Vec<Label>> = Vec::new();
+    for (label, block) in module.blocks.iter().enumerate() {
+        match block.next {
+            Continuation::Jmp(target) => reverse_graph[target].push(label),
+            Continuation::Jcc(_, _, _, target_t, target_f) => {
+                reverse_graph[target_t].push(label);
+                reverse_graph[target_f].push(label);
+            }
+            Continuation::Exit => {}
+        }
+    }
+
+    // Track which blocks have already been visited.
+    let mut pre_conds: Vec<Option<Formula>> = module.blocks.iter().map(|_| None).collect();
+
+    // Collect all blocks that end with an exit.
     let mut labels: Vec<Label> = module
         .blocks
         .iter()
@@ -27,35 +30,92 @@ pub fn vc(module: Module) -> Formula {
         .filter(|(_, block)| block.next == Continuation::Exit)
         .map(|(label, _)| label)
         .collect();
-    let mut next_labels: Vec<usize> = Vec::new();
 
+    // Perform a reverse breadth-first traversal of CFG.
+    let mut next_labels: Vec<usize> = Vec::new();
     while !labels.is_empty() {
         for label in labels.drain(..) {
             let block = &module.blocks[label];
-            let post_cond = f_true(); // TODO
+            // Generate post-condition from continuation.
+            let post_cond = match block.next {
+                Continuation::Jcc(cc, lhs, rhs, target_t, target_f) => {
+                    let lhs = reg_to_var(lhs);
+                    let rhs = match rhs {
+                        RegImm::Reg(r) => reg_to_var(r),
+                        RegImm::Imm(i) => e_val(i),
+                    };
+                    let cond = f_rel(cc, lhs, rhs);
+                    f_or(
+                        f_and(cond.clone(), pre_conds[target_t].clone().unwrap()),
+                        f_and(f_not(cond), pre_conds[target_f].clone().unwrap()),
+                    )
+                }
+                Continuation::Jmp(target) => pre_conds[target].clone().unwrap(),
+                Continuation::Exit => f_true(),
+            };
+            // Perform WP-calculus on post-condition with block body.
+            let wp_result = wp(&block.body, post_cond);
+            // Save or use result of WP.
+            if let Some(pre_assert) = &block.pre_assert {
+                let extra_cond = f_implies(pre_assert.clone(), wp_result);
+                pre_conds[label] = Some(pre_assert.clone());
+                // TODO: What to do with the implication?
+                // I think it should be a standalone verification condition.
+            } else {
+                // If a block has already been visited,
+                // but doesn't have an asserted pre-condition, abort.
+                if pre_conds[label].is_some() {
+                    return None;
+                }
+                pre_conds[label] = Some(wp_result);
+            }
+            // Add blocks that target this one to the next round.
+            next_labels.extend(reverse_graph[label].iter());
         }
+        // Prepare labels for next round.
+        next_labels.sort();
+        next_labels.dedup();
+        swap(&mut labels, &mut next_labels);
     }
 
-    todo!()
+    pre_conds[0].clone()
 }
 
-fn wp(instrs: Vec<Instr>, mut cond: Formula) -> Formula {
+fn wp(instrs: &Vec<Instr>, mut cond: Formula) -> Formula {
     for instr in instrs.iter().rev() {
+        // TODO: Create brand new unique variables instead of "v".
         match instr {
-            // I need to generate a new variable.
-            Instr::Unary(size, op, target) => {
-                let ts = reg_to_ident(*target);
-                let te = reg_to_var(*target);
-                let v = Expr::Var(String::from("v")); // TODO: i have to create a brand new variable
-                let e = e_unop(*op, te);
-                cond = f_forall(ts, f_implies(f_eq(v, e), cond))
+            Instr::Unary(op, reg) => {
+                let v = e_var("v");
+                let t = reg_to_var(*reg);
+                let e = e_unop(*op, t);
+                cond = f_forall(String::from("v"), f_implies(f_eq(v, e), cond))
             }
-            Instr::Binary(_, _, _, _) => todo!(),
-            Instr::Store(_, _, _) => todo!(),
-            Instr::Load(_, _, _) => todo!(),
-            Instr::LoadImm(_, _) => todo!(),
-            Instr::LoadMapFd(_, _) => todo!(),
-            Instr::Call(_) => todo!(),
+            Instr::Binary(op, dst, src) => {
+                let v = e_var("v");
+                let d = reg_to_var(*dst);
+                let s = match src {
+                    RegImm::Reg(r) => reg_to_var(*r),
+                    RegImm::Imm(i) => e_val(*i),
+                };
+                let e = e_binop(*op, d, s);
+                cond = f_forall(String::from("v"), f_implies(f_eq(v, e), cond))
+            }
+            Instr::Store(_, _) => {
+                panic!("not implemented"); /* TODO */
+            }
+            Instr::Load(_, _) => {
+                panic!("not implemented"); /* TODO */
+            }
+            Instr::LoadImm(_, _) => {
+                panic!("not implemented"); /* TODO */
+            }
+            Instr::LoadMapFd(_, _) => {
+                panic!("not implemented"); /* TODO */
+            }
+            Instr::Call(_) => {
+                panic!("not implemented"); /* TODO */
+            }
         }
     }
     cond
