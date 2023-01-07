@@ -2,6 +2,7 @@
 
 use crate::logic::Formula;
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Reg(usize);
 impl Reg {
     pub fn new(id: usize) -> Option<Self> {
@@ -11,8 +12,13 @@ impl Reg {
             None
         }
     }
+
+    pub fn get(&self) -> usize {
+        self.0
+    }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum WordSize {
     B8,
     B16,
@@ -20,6 +26,7 @@ pub enum WordSize {
     B64,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Cc {
     Eq,
     Gt,
@@ -34,12 +41,14 @@ pub enum Cc {
     Sle,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum UnAlu {
     Neg,
     Le,
     Be,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum BinAlu {
     Mov,
     Add,
@@ -56,13 +65,15 @@ pub enum BinAlu {
 }
 
 pub type Imm = i64;
-pub type Offset = i64;
-pub type MemRef = (Reg, Option<Offset>);
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum RegImm {
     Reg(Reg),
     Imm(Imm),
 }
+pub type Offset = i64;
+pub type MemRef = (Reg, Option<Offset>);
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Instr {
     Unary(WordSize, UnAlu, Reg),
     Binary(WordSize, BinAlu, Reg, RegImm),
@@ -74,18 +85,21 @@ pub enum Instr {
 }
 
 pub type Label = usize;
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Continuation {
     Exit,
     Jmp(Label),
     Jcc(Cc, Reg, RegImm, Label, Label),
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Block {
-    pub precond: Formula,
+    pub precond: Option<Formula>,
     pub body: Vec<Instr>,
     pub next: Continuation,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Module {
     pub blocks: Vec<Block>,
 }

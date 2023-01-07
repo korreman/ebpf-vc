@@ -1,5 +1,6 @@
 mod ast;
 mod logic;
+mod vc;
 
 fn test() {
     let i = ast::Instr::Unary(
