@@ -1,15 +1,12 @@
-//! An AST for eBPF code.
+//! A processed AST, ready for VC-generation.
 
-// Question:
-// Should I make a separate AST for parsed input?
-// I guess we can start by working with an AST that's ready to be parsed.
+use crate::logic::Formula;
 
 pub struct Reg(usize);
-
 impl Reg {
-    pub fn new(id: u32) -> Option<Self> {
+    pub fn new(id: usize) -> Option<Self> {
         if id < 10 {
-            Some(Self { id })
+            Some(Self(id))
         } else {
             None
         }
@@ -76,7 +73,7 @@ pub enum Instr {
     Call(Imm),
 }
 
-pub type Label = String;
+pub type Label = usize;
 pub enum Continuation {
     Exit,
     Jmp(Label),
@@ -84,11 +81,11 @@ pub enum Continuation {
 }
 
 pub struct Block {
-    // TODO: Precondition
+    pub precond: Formula,
     pub body: Vec<Instr>,
     pub next: Continuation,
 }
 
 pub struct Module {
-    pub blocks: HashMap<Label, Block>,
+    pub blocks: Vec<Block>,
 }
