@@ -93,5 +93,8 @@ pub struct Block {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Module {
+    /// Collection of program blocks.
+    /// These should be arranged as they occur in the code,
+    /// so the 0'th block is the entry-point of the module.
     pub blocks: Vec<Block>,
 }

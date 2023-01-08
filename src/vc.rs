@@ -5,8 +5,16 @@ use std::mem::swap;
 use crate::ast::*;
 use crate::logic::*;
 
-pub fn vc(module: Module) -> Option<Formula> {
+pub fn vc(module: Module) -> Option<Vec<Formula>> {
+    // Stores results.
+    let mut verif_conds: Vec<Formula> = Vec::new();
+
+    // Stores cached pre-conditions for each block.
+    // Also used to track which blocks have already been visited.
+    let mut pre_conds: Vec<Option<Formula>> = module.blocks.iter().map(|_| None).collect();
+
     // Create copy of the CFG with the edges reversed.
+    // Pre-emptively cache the pre-assertions as pre-conditions.
     let mut reverse_graph: Vec<Vec<Label>> = Vec::new();
     for (label, block) in module.blocks.iter().enumerate() {
         match block.next {
@@ -17,10 +25,10 @@ pub fn vc(module: Module) -> Option<Formula> {
             }
             Continuation::Exit => {}
         }
+        if let Some(pre_assert) = &block.pre_assert {
+            pre_conds[label] = Some(pre_assert.clone());
+        }
     }
-
-    // Track which blocks have already been visited.
-    let mut pre_conds: Vec<Option<Formula>> = module.blocks.iter().map(|_| None).collect();
 
     // Collect all blocks that end with an exit.
     let mut labels: Vec<Label> = module
@@ -32,6 +40,7 @@ pub fn vc(module: Module) -> Option<Formula> {
         .collect();
 
     // Perform a reverse breadth-first traversal of CFG.
+    let mut f = FormulaBuilder::new();
     let mut next_labels: Vec<usize> = Vec::new();
     while !labels.is_empty() {
         for label in labels.drain(..) {
@@ -44,29 +53,31 @@ pub fn vc(module: Module) -> Option<Formula> {
                         RegImm::Reg(r) => reg_to_var(r),
                         RegImm::Imm(i) => e_val(i),
                     };
-                    let cond = f_rel(cc, lhs, rhs);
-                    f_or(
-                        f_and(cond.clone(), pre_conds[target_t].clone().unwrap()),
-                        f_and(f_not(cond), pre_conds[target_f].clone().unwrap()),
+                    let cond = f.rel(cc, lhs, rhs);
+                    f.or(
+                        f.and(cond.clone(), pre_conds[target_t].clone().unwrap()),
+                        f.and(f.not(cond), pre_conds[target_f].clone().unwrap()),
                     )
                 }
                 Continuation::Jmp(target) => pre_conds[target].clone().unwrap(),
-                Continuation::Exit => f_true(),
+                Continuation::Exit => f.top(),
             };
             // Perform WP-calculus on post-condition with block body.
-            let wp_result = wp(&block.body, post_cond);
-            // Save or use result of WP.
+            let wp_result = wp(&mut f, &block.body, post_cond);
+            // Cache or use result of WP.
             if let Some(pre_assert) = &block.pre_assert {
-                let extra_cond = f_implies(pre_assert.clone(), wp_result);
-                pre_conds[label] = Some(pre_assert.clone());
-                // TODO: What to do with the implication?
-                // I think it should be a standalone verification condition.
+                // If the block has a pre-assertion,
+                // add a VC requiring that the pre-assertion implies the WP result.
+                let extra_cond = f.implies(pre_assert.clone(), wp_result);
+                verif_conds.push(extra_cond);
             } else {
-                // If a block has already been visited,
-                // but doesn't have an asserted pre-condition, abort.
+                // If the block doesn't have a pre-assertion,
+                // but has already been visited,
+                // abort.
                 if pre_conds[label].is_some() {
                     return None;
                 }
+                // Otherwise, cache the WP result for the block.
                 pre_conds[label] = Some(wp_result);
             }
             // Add blocks that target this one to the next round.
@@ -77,29 +88,31 @@ pub fn vc(module: Module) -> Option<Formula> {
         next_labels.dedup();
         swap(&mut labels, &mut next_labels);
     }
-
-    pre_conds[0].clone()
+    // Add the pre-condition of the starting block as a VC.
+    verif_conds.push(pre_conds.into_iter().next()??);
+    Some(verif_conds)
 }
 
-fn wp(instrs: &Vec<Instr>, mut cond: Formula) -> Formula {
+fn wp(f: &mut FormulaBuilder, instrs: &Vec<Instr>, mut cond: Formula) -> Formula {
     for instr in instrs.iter().rev() {
-        // TODO: Create brand new unique variables instead of "v".
         match instr {
             Instr::Unary(op, reg) => {
-                let v = e_var("v");
+                let var_name = String::from("v");
+                let v = f.var(var_name.clone());
                 let t = reg_to_var(*reg);
                 let e = e_unop(*op, t);
-                cond = f_forall(String::from("v"), f_implies(f_eq(v, e), cond))
+                cond = f.forall(var_name, f.implies(f.eq(v, e), cond))
             }
             Instr::Binary(op, dst, src) => {
-                let v = e_var("v");
+                let var_name = String::from("v");
+                let v = f.var(var_name.clone());
                 let d = reg_to_var(*dst);
                 let s = match src {
                     RegImm::Reg(r) => reg_to_var(*r),
                     RegImm::Imm(i) => e_val(*i),
                 };
                 let e = e_binop(*op, d, s);
-                cond = f_forall(String::from("v"), f_implies(f_eq(v, e), cond))
+                cond = f.forall(var_name, f.implies(f.eq(v, e), cond))
             }
             Instr::Store(_, _) => {
                 panic!("not implemented"); /* TODO */
