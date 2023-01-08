@@ -41,13 +41,14 @@ pub enum Formula {
     Rel(Cc, Expr, Expr),
 }
 
+#[derive(Default)]
 pub struct FormulaBuilder {
     id_counters: HashMap<String, usize>,
 }
 
 impl FormulaBuilder {
     pub fn new() -> Self {
-        Self { id_counters: HashMap::new() }
+        Self::default()
     }
 
     pub fn top(&self) -> Formula {

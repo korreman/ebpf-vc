@@ -93,7 +93,7 @@ pub fn vc(module: Module) -> Option<Vec<Formula>> {
     Some(verif_conds)
 }
 
-fn wp(f: &mut FormulaBuilder, instrs: &Vec<Instr>, mut cond: Formula) -> Formula {
+fn wp(f: &mut FormulaBuilder, instrs: &[Instr], mut cond: Formula) -> Formula {
     for instr in instrs.iter().rev() {
         match instr {
             Instr::Unary(op, reg) => {
