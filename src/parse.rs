@@ -24,7 +24,7 @@ fn num_hex(i: &str) -> Res<i64> {
                 many0(char('_')),
             ))),
         ),
-        |out: &str| i64::from_str_radix(&str::replace(&out, "_", ""), 16),
+        |out: &str| i64::from_str_radix(&str::replace(out, "_", ""), 16),
     )(i)
 }
 
@@ -34,14 +34,14 @@ fn num_bin(i: &str) -> Res<i64> {
             tag("0b"),
             recognize(many1(terminated(one_of("01"), many0(char('_'))))),
         ),
-        |out: &str| i64::from_str_radix(&str::replace(&out, "_", ""), 2),
+        |out: &str| i64::from_str_radix(&str::replace(out, "_", ""), 2),
     )(i)
 }
 
 fn num_dec(i: &str) -> Res<i64> {
     map_res(
         recognize(many1(terminated(one_of("0123456789"), many0(char('_'))))),
-        |out: &str| i64::from_str_radix(&str::replace(&out, "_", ""), 10),
+        |out: &str| str::replace(out, "_", "").parse::<i64>(),
     )(i)
 }
 
@@ -74,10 +74,7 @@ fn label(i: &str) -> Res<Label> {
 }
 
 fn line(i: &str) -> Res<Line> {
-    label
-        .map(|l| Line::Label(l))
-        .or(instr.map(|i| Line::Instr(i)))
-        .parse(i)
+    label.map(Line::Label).or(instr.map(Line::Instr)).parse(i)
 }
 
 pub fn module(i: &str) -> Res<Module> {
@@ -195,7 +192,7 @@ fn store(i: &str) -> Res<Instr> {
 fn jmp_target(i: &str) -> Res<JmpTarget> {
     alt((
         map(ident, |l| JmpTarget::Label(l.to_owned())),
-        map(offset, |o| JmpTarget::Offset(o)),
+        map(offset, JmpTarget::Offset),
     ))(i)
 }
 
@@ -214,27 +211,15 @@ fn jcc(i: &str) -> Res<Instr> {
         value(Cc::Sle, tag("sle")),
     ));
     map(
-        tuple((
-            char('j'),
-            cc,
-            isep,
-            reg,
-            isep,
-            reg_imm,
-            jmp_target,
-        )),
+        tuple((char('j'), cc, isep, reg, isep, reg_imm, jmp_target)),
         |(_, cc, _, lhs, _, rhs, target)| Instr::Jcc(cc, lhs, rhs, target),
     )(i)
 }
 
 fn instr(i: &str) -> Res<Instr> {
-    let jmp = map(preceded(pair(tag("jmp"), isep), jmp_target), |t| {
-        Instr::Jmp(t)
-    });
-    let call = map(preceded(pair(tag("call"), isep), imm), |i| Instr::Call(i));
-    let load_imm = map(preceded(pair(tag("lddw"), isep), imm), |i| {
-        Instr::LoadImm(i)
-    });
+    let jmp = map(preceded(pair(tag("jmp"), isep), jmp_target), Instr::Jmp);
+    let call = map(preceded(pair(tag("call"), isep), imm), Instr::Call);
+    let load_imm = map(preceded(pair(tag("lddw"), isep), imm), Instr::LoadImm);
     let exit = value(Instr::Exit, tag("exit"));
     // Missing: LoadMapFd
     alt((unary, binary, load, load_imm, store, jcc, jmp, call, exit))(i)

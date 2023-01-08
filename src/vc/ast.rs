@@ -1,8 +1,8 @@
 //! A processed AST, ready for VC-generation.
 //! It currently only supports 64-bit operations.
 
+pub use crate::ast::{BinAlu, Cc, Imm, MemRef, Offset, Reg, RegImm, UnAlu};
 use crate::logic::Formula;
-pub use crate::ast::{Cc, UnAlu, BinAlu, Reg, Imm, RegImm, Offset, MemRef};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Instr {

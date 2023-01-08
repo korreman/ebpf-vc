@@ -2,8 +2,8 @@
 use std::mem::swap;
 
 pub mod ast;
-use ast::*;
 use crate::logic::*;
+use ast::*;
 
 pub fn vc(module: Module) -> Option<Vec<Formula>> {
     // Stores results.
