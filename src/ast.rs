@@ -1,49 +1,27 @@
 //! An AST used for parsing eBPF assembly.
 
+#[rustfmt::skip]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum WordSize {
-    B8,
-    B16,
-    B32,
-    B64,
+    B8, B16, B32, B64,
 }
 
+#[rustfmt::skip]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Cc {
-    Eq,
-    Gt,
-    Ge,
-    Lt,
-    Le,
-    Set,
-    Ne,
-    Sgt,
-    Sge,
-    Slt,
-    Sle,
+    Eq, Gt, Ge, Lt, Le, Set, Ne, Sgt, Sge, Slt, Sle,
 }
 
+#[rustfmt::skip]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum UnAlu {
-    Neg,
-    Le,
-    Be,
+    Neg, Le, Be,
 }
 
+#[rustfmt::skip]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum BinAlu {
-    Mov,
-    Add,
-    Sub,
-    Mul,
-    Div,
-    Mod,
-    And,
-    Or,
-    Xor,
-    Lsh,
-    Rsh,
-    Arsh,
+    Mov, Add, Sub, Mul, Div, Mod, And, Or, Xor, Lsh, Rsh, Arsh,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -71,16 +49,19 @@ pub enum RegImm {
 }
 
 pub type Offset = i64;
-pub type MemRef = (Reg, Option<Offset>);
 pub type Label = String;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct MemRef(pub Reg, pub Option<Offset>);
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum JmpTarget {
     Label(Label),
     Offset(Offset),
 }
 
-pub enum Line {
-    Label(Label),
-    // TODO: Assertions
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Instr {
     Unary(WordSize, UnAlu, Reg),
     Binary(WordSize, BinAlu, Reg, RegImm),
     Store(WordSize, MemRef, RegImm),
@@ -88,9 +69,15 @@ pub enum Line {
     LoadImm(Imm),
     LoadMapFd(Reg, Imm),
     Jmp(JmpTarget),
-    Jcc(Cc, Reg, RegImm, Label, Label),
+    Jcc(Cc, Reg, RegImm, JmpTarget, JmpTarget),
     Call(Imm),
     Exit,
+}
+
+pub enum Line {
+    Label(Label),
+    Instr(Instr),
+    // TODO: Assertions
 }
 
 pub type Module = Vec<Line>;
