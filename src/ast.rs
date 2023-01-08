@@ -1,4 +1,5 @@
 //! A processed AST, ready for VC-generation.
+//! It currently only supports 64-bit operations.
 
 use crate::logic::Formula;
 
