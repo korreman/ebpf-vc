@@ -1,22 +1,11 @@
-//! A processed AST, ready for VC-generation.
-//! It currently only supports 64-bit operations.
-
-use crate::logic::Formula;
+//! An AST used for parsing eBPF assembly.
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct Reg(usize);
-impl Reg {
-    pub fn new(id: usize) -> Option<Self> {
-        if id < 10 {
-            Some(Self(id))
-        } else {
-            None
-        }
-    }
-
-    pub fn get(&self) -> usize {
-        self.0
-    }
+pub enum WordSize {
+    B8,
+    B16,
+    B32,
+    B64,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -57,45 +46,51 @@ pub enum BinAlu {
     Arsh,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Reg(usize);
+impl Reg {
+    pub fn new(id: usize) -> Option<Self> {
+        if id < 10 {
+            Some(Self(id))
+        } else {
+            None
+        }
+    }
+
+    pub fn get(&self) -> usize {
+        self.0
+    }
+}
+
 pub type Imm = i64;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum RegImm {
     Reg(Reg),
     Imm(Imm),
 }
+
 pub type Offset = i64;
 pub type MemRef = (Reg, Option<Offset>);
+pub type Label = String;
+pub enum JmpTarget {
+    Label(Label),
+    Offset(Offset),
+}
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Instr {
-    Unary(UnAlu, Reg),
-    Binary(BinAlu, Reg, RegImm),
-    Store(MemRef, RegImm),
-    Load(Reg, MemRef),
-    LoadImm(Reg, Imm),
+pub enum Line {
+    Label(Label),
+    // TODO: Assertions
+    Unary(WordSize, UnAlu, Reg),
+    Binary(WordSize, BinAlu, Reg, RegImm),
+    Store(WordSize, MemRef, RegImm),
+    Load(WordSize, Reg, MemRef),
+    LoadImm(Imm),
     LoadMapFd(Reg, Imm),
-    Call(Imm),
-}
-
-pub type Label = usize;
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Continuation {
-    Exit,
-    Jmp(Label),
+    Jmp(JmpTarget),
     Jcc(Cc, Reg, RegImm, Label, Label),
+    Call(Imm),
+    Exit,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Block {
-    pub pre_assert: Option<Formula>,
-    pub body: Vec<Instr>,
-    pub next: Continuation,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Module {
-    /// Collection of program blocks.
-    /// These should be arranged as they occur in the code,
-    /// so the 0'th block is the entry-point of the module.
-    pub blocks: Vec<Block>,
-}
+pub type Module = Vec<Line>;

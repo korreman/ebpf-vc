@@ -1,8 +1,8 @@
 //! Verification condition generation.
-
 use std::mem::swap;
 
-use crate::ast::*;
+pub mod ast;
+use ast::*;
 use crate::logic::*;
 
 pub fn vc(module: Module) -> Option<Vec<Formula>> {
@@ -118,15 +118,6 @@ fn wp(f: &mut FormulaBuilder, instrs: &[Instr], mut cond: Formula) -> Formula {
                 panic!("not implemented"); /* TODO */
             }
             Instr::Load(_, _) => {
-                panic!("not implemented"); /* TODO */
-            }
-            Instr::LoadImm(_, _) => {
-                panic!("not implemented"); /* TODO */
-            }
-            Instr::LoadMapFd(_, _) => {
-                panic!("not implemented"); /* TODO */
-            }
-            Instr::Call(_) => {
                 panic!("not implemented"); /* TODO */
             }
         }
