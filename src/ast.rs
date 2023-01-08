@@ -69,7 +69,7 @@ pub enum Instr {
     LoadImm(Imm),
     LoadMapFd(Reg, Imm),
     Jmp(JmpTarget),
-    Jcc(Cc, Reg, RegImm, JmpTarget, JmpTarget),
+    Jcc(Cc, Reg, RegImm, JmpTarget),
     Call(Imm),
     Exit,
 }

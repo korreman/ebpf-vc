@@ -222,9 +222,8 @@ fn jcc(i: &str) -> Res<Instr> {
             isep,
             reg_imm,
             jmp_target,
-            jmp_target,
         )),
-        |(_, cc, _, lhs, _, rhs, target_t, target_f)| Instr::Jcc(cc, lhs, rhs, target_t, target_f),
+        |(_, cc, _, lhs, _, rhs, target)| Instr::Jcc(cc, lhs, rhs, target),
     )(i)
 }
 
