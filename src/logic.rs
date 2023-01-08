@@ -5,6 +5,14 @@ use crate::ast::{BinAlu, Cc, Imm, Reg, UnAlu};
 
 pub type Ident = String;
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Expr {
+    Val(Imm),
+    Var(Ident),
+    Unary(UnAlu, Box<Expr>),
+    Binary(BinAlu, Box<(Expr, Expr)>),
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum BinOp {
     And,
@@ -17,6 +25,20 @@ pub enum BinOp {
 pub enum QType {
     Exists,
     Forall,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Formula {
+    Val(bool),
+    Not(Box<Formula>),
+    Bin(BinOp, Box<(Formula, Formula)>),
+    Quant(QType, Ident, Box<Formula>),
+    Replace {
+        prev: Ident,
+        new: Ident,
+        f: Box<Formula>,
+    },
+    Rel(Cc, Expr, Expr),
 }
 
 pub struct FormulaBuilder {
@@ -34,15 +56,6 @@ impl FormulaBuilder {
 
     pub fn bot(&self) -> Formula {
         Formula::Val(false)
-    }
-
-    /// Generate a new, unique variable.
-    pub fn var(&mut self, mut ident: Ident) -> Expr {
-        let counter = self.id_counters.entry(ident.clone()).or_insert(0);
-        ident.push('_');
-        ident.extend(format!("{counter}").chars());
-        *counter += 1;
-        Expr::Var(ident)
     }
 
     pub fn not(&self, f: Formula) -> Formula {
@@ -89,46 +102,29 @@ impl FormulaBuilder {
         Formula::Rel(Cc::Eq, a, b)
     }
 
-}
+    /// Generate a new, unique variable.
+    pub fn var(&mut self, mut ident: Ident) -> Expr {
+        let counter = self.id_counters.entry(ident.clone()).or_insert(0);
+        ident.push('_');
+        ident.extend(format!("{counter}").chars());
+        *counter += 1;
+        Expr::Var(ident)
+    }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum Formula {
-    Val(bool),
-    Not(Box<Formula>),
-    Bin(BinOp, Box<(Formula, Formula)>),
-    Quant(QType, Ident, Box<Formula>),
-    Replace {
-        prev: Ident,
-        new: Ident,
-        f: Box<Formula>,
-    },
-    Rel(Cc, Expr, Expr),
-}
+    /// Get the variable representing a register.
+    pub fn reg(&self, reg: Reg) -> Expr {
+        Expr::Var(format!("r{}", reg.get()))
+    }
 
-pub fn reg_to_ident(reg: Reg) -> Ident {
-    format!("r{}", reg.get())
-}
+    pub fn val(&self, i: Imm) -> Expr {
+        Expr::Val(i)
+    }
 
-pub fn reg_to_var(reg: Reg) -> Expr {
-    Expr::Var(format!("r{}", reg.get()))
-}
+    pub fn unop(&self, op: UnAlu, e: Expr) -> Expr {
+        Expr::Unary(op, Box::new(e))
+    }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum Expr {
-    Val(Imm),
-    Var(Ident),
-    Unary(UnAlu, Box<Expr>),
-    Binary(BinAlu, Box<(Expr, Expr)>),
-}
-
-pub fn e_val(i: Imm) -> Expr {
-    Expr::Val(i)
-}
-
-pub fn e_unop(op: UnAlu, e: Expr) -> Expr {
-    Expr::Unary(op, Box::new(e))
-}
-
-pub fn e_binop(op: BinAlu, a: Expr, b: Expr) -> Expr {
-    Expr::Binary(op, Box::new((a, b)))
+    pub fn binop(&self, op: BinAlu, a: Expr, b: Expr) -> Expr {
+        Expr::Binary(op, Box::new((a, b)))
+    }
 }
