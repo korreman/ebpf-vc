@@ -1,6 +1,9 @@
 //! Verification condition generation.
 use std::mem::swap;
 
+mod preprocess;
+pub use preprocess::*;
+
 pub mod ast;
 use crate::logic::*;
 use ast::*;
