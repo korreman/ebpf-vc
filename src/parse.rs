@@ -13,7 +13,7 @@ use crate::ast::*;
 
 type Res<'a, O> = IResult<&'a str, O>;
 
-// Some tokens
+// Tokens
 
 fn num_hex(i: &str) -> Res<i64> {
     map_res(

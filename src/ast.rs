@@ -81,3 +81,5 @@ pub enum Line {
 }
 
 pub type Module = Vec<Line>;
+
+// TODO: Validation
