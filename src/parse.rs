@@ -4,14 +4,16 @@ use nom::{
     bytes::complete::tag,
     character::complete::{alpha1, alphanumeric1, char, newline, one_of, space0},
     combinator::{complete, map, map_opt, map_res, not, opt, recognize, value},
-    multi::{many0, many0_count, many1, separated_list0},
+    multi::{many0, many1, many1_count, separated_list0},
     sequence::{delimited, pair, preceded, terminated, tuple},
     IResult, Parser,
 };
+type Res<'a, O> = IResult<&'a str, O>;
+
+#[cfg(test)]
+mod tests;
 
 use crate::ast::*;
-
-type Res<'a, O> = IResult<&'a str, O>;
 
 // Tokens
 
@@ -52,7 +54,7 @@ fn num(i: &str) -> Res<i64> {
 fn ident(i: &str) -> Res<&str> {
     recognize(pair(
         alt((alpha1, tag("_"))),
-        many0_count(alt((alphanumeric1, tag("_")))),
+        many1_count(alt((alphanumeric1, tag("_")))),
     ))(i)
 }
 
