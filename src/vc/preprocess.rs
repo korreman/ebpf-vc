@@ -35,10 +35,8 @@ impl TryInto<super::Module> for crate::ast::Module {
         for (idx, line) in self.iter().enumerate() {
             if let Line::Instr(instr) = line {
                 match instr {
-                    Instr::Jmp(target) => {
-                        if let JmpTarget::Offset(o) = target {
-                            block_idxs.push((idx as i64 + o) as usize + 1)
-                        }
+                    Instr::Jmp(JmpTarget::Offset(o)) => {
+                        block_idxs.push((idx as i64 + o) as usize + 1)
                     }
                     Instr::Jcc(_, _, _, target) => {
                         block_idxs.push(idx + 1);
@@ -64,7 +62,7 @@ impl TryInto<super::Module> for crate::ast::Module {
         for (new_idx, &old_idx) in block_idxs.iter().enumerate() {
             idx_map.insert(old_idx, new_idx);
         }
-        for (_, idx) in &mut label_idxs {
+        for idx in label_idxs.values_mut() {
             *idx = idx_map[idx];
         }
         let get_target = |target: &JmpTarget, next| {
