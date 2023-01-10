@@ -198,13 +198,13 @@ fn jcc(i: &str) -> Res<Instr> {
         value(Cc::Sle, tag("sle")),
     ));
     map(
-        tuple((char('j'), cc, isep, reg, isep, reg_imm, jmp_target)),
-        |(_, cc, _, lhs, _, rhs, target)| Instr::Jcc(cc, lhs, rhs, target),
+        tuple((char('j'), cc, space1, reg, isep, reg_imm, isep, jmp_target)),
+        |(_, cc, _, lhs, _, rhs, _, target)| Instr::Jcc(cc, lhs, rhs, target),
     )(i)
 }
 
 fn instr(i: &str) -> Res<Instr> {
-    let jmp = map(preceded(pair(tag("jmp"), space1), jmp_target), Instr::Jmp);
+    let jmp = map(preceded(pair(tag("ja"), space1), jmp_target), Instr::Jmp);
     let call = map(preceded(pair(tag("call"), space1), imm), Instr::Call);
     let load_imm = map(
         tuple((tag("lddw"), space1, reg, isep, imm)),
@@ -236,9 +236,13 @@ fn label(i: &str) -> Res<Label> {
 }
 
 fn line(i: &str) -> Res<Line> {
-    label.map(Line::Label).or(instr.map(Line::Instr)).parse(i)
+    alt((label.map(Line::Label), instr.map(Line::Instr)))(i)
 }
 
 pub fn module(i: &str) -> Res<Module> {
-    complete(separated_list0(line_sep, line))(i)
+    complete(delimited(
+        opt(line_sep),
+        separated_list0(line_sep, line),
+        opt(line_sep),
+    ))(i)
 }

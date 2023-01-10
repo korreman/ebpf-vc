@@ -5,7 +5,11 @@ use nom::{combinator::eof, error::ParseError, sequence::terminated};
 
 fn accepts<'a, T, E: ParseError<&'a str>>(parser: impl Parser<&'a str, T, E>, input: &'a str) {
     if terminated(parser, eof).parse(input).is_err() {
-        panic!("rejects: {input:?}")
+        if input.len() > 32 && input.contains('\n') {
+            panic!("rejects:\n\n{input}\n")
+        } else {
+            panic!("rejects: {input:?}")
+        }
     }
 }
 
@@ -295,16 +299,56 @@ fn load_instructions() {
     parses(instr, "ldxh r0  [r1]", Instr::Load(WordSize::B16, Reg::R0, MemRef(Reg::R1, None)));
     parses(instr, "ldxw r0  [r1]", Instr::Load(WordSize::B32, Reg::R0, MemRef(Reg::R1, None)));
     parses(instr, "ldxdw r0 [r1]", Instr::Load(WordSize::B64, Reg::R0, MemRef(Reg::R1, None)));
-
-    parses(instr, "ldxb r0,  [r1]", Instr::Load(WordSize::B8, Reg::R0, MemRef(Reg::R1, None)));
-    parses(instr, "ldxh r0,  [r1]", Instr::Load(WordSize::B16, Reg::R0, MemRef(Reg::R1, None)));
-    parses(instr, "ldxw r0,  [r1]", Instr::Load(WordSize::B32, Reg::R0, MemRef(Reg::R1, None)));
-    parses(instr, "ldxdw r0, [r1]", Instr::Load(WordSize::B64, Reg::R0, MemRef(Reg::R1, None)));
-
     parses(instr, "lddw r0, 123", Instr::LoadImm(Reg::R0, 123));
 
     rejects(instr, "ld r0 [r1]");
     rejects(instr, "ldx r0 [r1]");
+}
+
+#[test]
+fn store_instructions() {
+    parses(instr, "stb  [r0] 123", Instr::Store(WordSize::B8, MemRef(Reg::R0, None), RegImm::Imm(123)));
+    parses(instr, "sth  [r0] 123", Instr::Store(WordSize::B16, MemRef(Reg::R0, None), RegImm::Imm(123)));
+    parses(instr, "stw  [r0] 123", Instr::Store(WordSize::B32, MemRef(Reg::R0, None), RegImm::Imm(123)));
+    parses(instr, "stdw [r0] 123", Instr::Store(WordSize::B64, MemRef(Reg::R0, None), RegImm::Imm(123)));
+
+    parses(instr, "stxb  [r0] r1", Instr::Store(WordSize::B8, MemRef(Reg::R0, None), RegImm::Reg(Reg::R1)));
+    parses(instr, "stxh  [r0] r1", Instr::Store(WordSize::B16, MemRef(Reg::R0, None), RegImm::Reg(Reg::R1)));
+    parses(instr, "stxw  [r0] r1", Instr::Store(WordSize::B32, MemRef(Reg::R0, None), RegImm::Reg(Reg::R1)));
+    parses(instr, "stxdw [r0] r1", Instr::Store(WordSize::B64, MemRef(Reg::R0, None), RegImm::Reg(Reg::R1)));
+
+    rejects(instr, "st [r0] r1");
+    rejects(instr, "stx [r0] r1");
+}
+
+#[test]
+fn jump_instructions() {
+    parses(instr, "ja label", Instr::Jmp(JmpTarget::Label("label".to_owned())));
+    parses(instr, "ja + 8", Instr::Jmp(JmpTarget::Offset(8)));
+    parses(instr, "ja - 7", Instr::Jmp(JmpTarget::Offset(-7)));
+
+    parses(instr, "jeq r0 0 +1", Instr::Jcc(Cc::Eq, Reg::R0, RegImm::Imm(0), JmpTarget::Offset(1)));
+    parses(instr, "jeq r0 r1 +1", Instr::Jcc(Cc::Eq, Reg::R0, RegImm::Reg(Reg::R1), JmpTarget::Offset(1)));
+    parses(instr, "jeq r0 0 -0x80", Instr::Jcc(Cc::Eq, Reg::R0, RegImm::Imm(0), JmpTarget::Offset(-0x80)));
+    parses(instr, "jeq r0 r1 -0b1001", Instr::Jcc(Cc::Eq, Reg::R0, RegImm::Reg(Reg::R1), JmpTarget::Offset(-0b1001)));
+    parses(instr, "jeq r0 0 l", Instr::Jcc(Cc::Eq, Reg::R0, RegImm::Imm(0), JmpTarget::Label("l".to_owned())));
+    parses(instr, "jeq r0 r1 l", Instr::Jcc(Cc::Eq, Reg::R0, RegImm::Reg(Reg::R1), JmpTarget::Label("l".to_owned())));
+
+    parses(instr, "jgt r0 0 +1", Instr::Jcc(Cc::Gt, Reg::R0, RegImm::Imm(0), JmpTarget::Offset(1)));
+    parses(instr, "jge r0 0 +1", Instr::Jcc(Cc::Ge, Reg::R0, RegImm::Imm(0), JmpTarget::Offset(1)));
+    parses(instr, "jlt r0 0 +1", Instr::Jcc(Cc::Lt, Reg::R0, RegImm::Imm(0), JmpTarget::Offset(1)));
+    parses(instr, "jle r0 0 +1", Instr::Jcc(Cc::Le, Reg::R0, RegImm::Imm(0), JmpTarget::Offset(1)));
+    parses(instr, "jset r0 0 +1", Instr::Jcc(Cc::Set, Reg::R0, RegImm::Imm(0), JmpTarget::Offset(1)));
+    parses(instr, "jne r0 0 +1", Instr::Jcc(Cc::Ne, Reg::R0, RegImm::Imm(0), JmpTarget::Offset(1)));
+    parses(instr, "jsgt r0 0 +1", Instr::Jcc(Cc::Sgt, Reg::R0, RegImm::Imm(0), JmpTarget::Offset(1)));
+    parses(instr, "jsge r0 0 +1", Instr::Jcc(Cc::Sge, Reg::R0, RegImm::Imm(0), JmpTarget::Offset(1)));
+    parses(instr, "jslt r0 0 +1", Instr::Jcc(Cc::Slt, Reg::R0, RegImm::Imm(0), JmpTarget::Offset(1)));
+    parses(instr, "jsle r0 0 +1", Instr::Jcc(Cc::Sle, Reg::R0, RegImm::Imm(0), JmpTarget::Offset(1)));
+
+    rejects(instr, "ja 8");
+    rejects(instr, "jeq r0 0 8");
+    rejects(instr, "jeq r0 r1 8");
+    rejects(instr, "jeq 0 r1 8");
 }
 
 #[test]
@@ -349,4 +393,93 @@ fn labels() {
     rejects(label, ":");
     rejects(label, "some_identifier");
     rejects(label, "some identifiers");
+}
+
+#[test]
+fn gcd() {
+    parses(module, include_str!("../../test_asm/exit.asm"), vec![Line::Instr(Instr::Exit)]);
+    accepts(module, include_str!("../../test_asm/gcd.asm"));
+    parses(
+        module,
+        "
+            ;; Solution to day 1, part 1 of Advent of Code 2022.
+            ;; The requires an
+            ;; r0 - return value, max elf
+            ;; r1 - input ptr
+            ;; r2 - input size
+            ;; r3 - index
+            ;; r4 - load dst
+            ;; r5 - number parsing accumulator
+            ;; r6 - current elf
+
+            mov r0 0
+            mov r3 0
+            mov r5 0
+            mov r6 0
+            outer: ;; loop
+                jeq r3 r2 submit ;; submit final elf if end of input has been reached
+                mov r4 r1 ;; load next byte
+                add r4 r3
+                ldxb r4 [r4]
+                add r3 1
+                jeq r4 10 submit ;; newline check
+
+            inner: ;; loop. parses a number from a decimal string, terminated by newline
+                mul r5 10
+                add r5 r4
+                sub r5 48
+                mov r4 r1 ;; load next byte
+                add r4 r3
+                ldxb r4 [r4]
+                add r3 1
+                jne r4 10 inner ;; newline check
+
+                add r6 r5
+                mov r5 0
+                ja outer
+
+            submit: ;; finishes an elf. compare to current max and replace if better, reset elf to 0
+                jgt r0 r6 +1
+                mov r0 r6
+                mov r6 0
+                jeq r3 r2 end
+                ja outer
+
+            end:
+                exit
+        ",
+        vec![
+            Line::Instr(Instr::Binary(WordSize::B64, BinAlu::Mov, Reg::R0, RegImm::Imm(0))),
+            Line::Instr(Instr::Binary(WordSize::B64, BinAlu::Mov, Reg::R3, RegImm::Imm(0))),
+            Line::Instr(Instr::Binary(WordSize::B64, BinAlu::Mov, Reg::R5, RegImm::Imm(0))),
+            Line::Instr(Instr::Binary(WordSize::B64, BinAlu::Mov, Reg::R6, RegImm::Imm(0))),
+            Line::Label("outer".to_owned()),
+            Line::Instr(Instr::Jcc(Cc::Eq, Reg::R3, RegImm::Reg(Reg::R2), JmpTarget::Label("submit".to_owned()))),
+            Line::Instr(Instr::Binary(WordSize::B64, BinAlu::Mov, Reg::R4, RegImm::Reg(Reg::R1))),
+            Line::Instr(Instr::Binary(WordSize::B64, BinAlu::Add, Reg::R4, RegImm::Reg(Reg::R3))),
+            Line::Instr(Instr::Load(WordSize::B8, Reg::R4, MemRef(Reg::R4, None))),
+            Line::Instr(Instr::Binary(WordSize::B64, BinAlu::Add, Reg::R3, RegImm::Imm(1))),
+            Line::Instr(Instr::Jcc(Cc::Eq, Reg::R4, RegImm::Imm(10), JmpTarget::Label("submit".to_owned()))),
+            Line::Label("inner".to_owned()),
+            Line::Instr(Instr::Binary(WordSize::B64, BinAlu::Mul, Reg::R5, RegImm::Imm(10))),
+            Line::Instr(Instr::Binary(WordSize::B64, BinAlu::Add, Reg::R5, RegImm::Reg(Reg::R4))),
+            Line::Instr(Instr::Binary(WordSize::B64, BinAlu::Sub, Reg::R5, RegImm::Imm(48))),
+            Line::Instr(Instr::Binary(WordSize::B64, BinAlu::Mov, Reg::R4, RegImm::Reg(Reg::R1))),
+            Line::Instr(Instr::Binary(WordSize::B64, BinAlu::Add, Reg::R4, RegImm::Reg(Reg::R3))),
+            Line::Instr(Instr::Load(WordSize::B8, Reg::R4, MemRef(Reg::R4, None))),
+            Line::Instr(Instr::Binary(WordSize::B64, BinAlu::Add, Reg::R3, RegImm::Imm(1))),
+            Line::Instr(Instr::Jcc(Cc::Ne, Reg::R4, RegImm::Imm(10), JmpTarget::Label("inner".to_owned()))),
+            Line::Instr(Instr::Binary(WordSize::B64, BinAlu::Add, Reg::R6, RegImm::Reg(Reg::R5))),
+            Line::Instr(Instr::Binary(WordSize::B64, BinAlu::Mov, Reg::R5, RegImm::Imm(0))),
+            Line::Instr(Instr::Jmp(JmpTarget::Label("outer".to_owned()))),
+            Line::Label("submit".to_owned()),
+            Line::Instr(Instr::Jcc(Cc::Gt, Reg::R0, RegImm::Reg(Reg::R6), JmpTarget::Offset(1))),
+            Line::Instr(Instr::Binary(WordSize::B64, BinAlu::Mov, Reg::R0, RegImm::Reg(Reg::R6))),
+            Line::Instr(Instr::Binary(WordSize::B64, BinAlu::Mov, Reg::R6, RegImm::Imm(0))),
+            Line::Instr(Instr::Jcc(Cc::Eq, Reg::R3, RegImm::Reg(Reg::R2), JmpTarget::Label("end".to_owned()))),
+            Line::Instr(Instr::Jmp(JmpTarget::Label("outer".to_owned()))),
+            Line::Label("end".to_owned()),
+            Line::Instr(Instr::Exit),
+        ],
+    );
 }

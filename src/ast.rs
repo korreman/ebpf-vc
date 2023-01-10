@@ -85,6 +85,7 @@ pub enum Instr {
     Exit,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Line {
     Label(Label),
     Instr(Instr),
