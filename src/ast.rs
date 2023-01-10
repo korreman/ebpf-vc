@@ -27,6 +27,17 @@ pub enum BinAlu {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Reg(usize);
 impl Reg {
+    pub const R0: Self = Reg(0);
+    pub const R1: Self = Reg(1);
+    pub const R2: Self = Reg(2);
+    pub const R3: Self = Reg(3);
+    pub const R4: Self = Reg(4);
+    pub const R5: Self = Reg(5);
+    pub const R6: Self = Reg(6);
+    pub const R7: Self = Reg(7);
+    pub const R8: Self = Reg(8);
+    pub const R9: Self = Reg(9);
+
     pub fn new(id: usize) -> Option<Self> {
         if id < 10 {
             Some(Self(id))
@@ -66,7 +77,7 @@ pub enum Instr {
     Binary(WordSize, BinAlu, Reg, RegImm),
     Store(WordSize, MemRef, RegImm),
     Load(WordSize, Reg, MemRef),
-    LoadImm(Imm),
+    LoadImm(Reg, Imm),
     LoadMapFd(Reg, Imm),
     Jmp(JmpTarget),
     Jcc(Cc, Reg, RegImm, JmpTarget),

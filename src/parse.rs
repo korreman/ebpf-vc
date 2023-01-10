@@ -2,8 +2,8 @@
 use nom::{
     branch::alt,
     bytes::complete::tag,
-    character::complete::{alpha1, alphanumeric1, char, newline, one_of, satisfy, space0},
-    combinator::{complete, map, map_opt, map_res, opt, recognize, value},
+    character::complete::{alpha1, alphanumeric1, char, newline, one_of, satisfy, space0, space1},
+    combinator::{complete, map, map_opt, map_res, opt, recognize, value, verify},
     multi::{many0, many0_count, many1, separated_list0},
     sequence::{delimited, pair, preceded, terminated, tuple},
     IResult, Parser,
@@ -11,9 +11,12 @@ use nom::{
 type Res<'a, O> = IResult<&'a str, O>;
 
 #[cfg(test)]
+#[rustfmt::skip]
 mod tests;
 
 use crate::ast::*;
+
+// TODO: Improve the whitespace story.
 
 // Tokens
 
@@ -57,15 +60,13 @@ fn ident(i: &str) -> Res<&str> {
 
 /// Separator between components of an instruction
 fn isep(i: &str) -> Res<()> {
-    value((), tuple((many0(char(' ')), char(','), many0(char(' ')))))(i)
-}
-
-// TODO: 64 bit should be an empty string
-fn alu_size(i: &str) -> Res<WordSize> {
-    alt((
-        value(WordSize::B32, tag("32")),
-        value(WordSize::B64, tag("64")),
-    ))(i)
+    value(
+        (),
+        verify(
+            recognize(tuple((space0, opt(char(',')), space0))),
+            |res: &str| !res.is_empty(),
+        ),
+    )(i)
 }
 
 fn reg(i: &str) -> Res<Reg> {
@@ -75,8 +76,13 @@ fn reg(i: &str) -> Res<Reg> {
 }
 
 fn imm(i: &str) -> Res<Imm> {
-    // TODO: Negative numbers
-    num(i)
+    pair(opt(terminated(alt((char('+'), char('-'))), space0)), num)
+        .map(|(sign, n)| match sign {
+            Some('+') | None => n,
+            Some('-') => -n,
+            _ => unreachable!(),
+        })
+        .parse(i)
 }
 
 fn reg_imm(i: &str) -> Res<RegImm> {
@@ -90,19 +96,27 @@ fn offset(i: &str) -> Res<Offset> {
     ))(i)
 }
 
+fn alu_size(i: &str) -> Res<WordSize> {
+    alt((
+        value(WordSize::B32, tag("32")),
+        value(WordSize::B64, opt(tag("64"))),
+    ))(i)
+}
+
 fn unary(i: &str) -> Res<Instr> {
     let op = alt((
         value(UnAlu::Neg, tag("neg")),
         value(UnAlu::Le, tag("le")),
         value(UnAlu::Be, tag("be")),
     ));
-    map(tuple((op, alu_size, isep, reg)), |(op, size, _, reg)| {
+    map(tuple((op, alu_size, space1, reg)), |(op, size, _, reg)| {
         Instr::Unary(size, op, reg)
     })(i)
 }
 
 fn binary(i: &str) -> Res<Instr> {
     let op = alt((
+        value(BinAlu::Mov, tag("mov")),
         value(BinAlu::Add, tag("add")),
         value(BinAlu::Sub, tag("sub")),
         value(BinAlu::Mul, tag("mul")),
@@ -116,7 +130,7 @@ fn binary(i: &str) -> Res<Instr> {
         value(BinAlu::Arsh, tag("arsh")),
     ));
     map(
-        tuple((op, alu_size, isep, reg, isep, reg_imm)),
+        tuple((op, alu_size, space1, reg, isep, reg_imm)),
         |(op, size, _, reg, _, reg_imm)| Instr::Binary(size, op, reg, reg_imm),
     )(i)
 }
@@ -131,10 +145,11 @@ fn mem_size(i: &str) -> Res<WordSize> {
 }
 
 fn mem_ref(i: &str) -> Res<MemRef> {
-    let inner = map(tuple((reg, space0, opt(offset))), |(reg, _, offset)| {
-        MemRef(reg, offset)
-    });
-    delimited(char('['), inner, char(']'))(i)
+    let inner = map(
+        tuple((reg, space0, opt(offset), space0)),
+        |(reg, _, offset, _)| MemRef(reg, offset),
+    );
+    delimited(terminated(char('['), space0), inner, char(']'))(i)
 }
 
 fn load(i: &str) -> Res<Instr> {
@@ -189,9 +204,12 @@ fn jcc(i: &str) -> Res<Instr> {
 }
 
 fn instr(i: &str) -> Res<Instr> {
-    let jmp = map(preceded(pair(tag("jmp"), isep), jmp_target), Instr::Jmp);
-    let call = map(preceded(pair(tag("call"), isep), imm), Instr::Call);
-    let load_imm = map(preceded(pair(tag("lddw"), isep), imm), Instr::LoadImm);
+    let jmp = map(preceded(pair(tag("jmp"), space1), jmp_target), Instr::Jmp);
+    let call = map(preceded(pair(tag("call"), space1), imm), Instr::Call);
+    let load_imm = map(
+        tuple((tag("lddw"), space1, reg, isep, imm)),
+        |(_, _, reg, _, imm)| Instr::LoadImm(reg, imm),
+    );
     let exit = value(Instr::Exit, tag("exit"));
     // Missing: LoadMapFd
     alt((unary, binary, load, load_imm, store, jcc, jmp, call, exit))(i)
