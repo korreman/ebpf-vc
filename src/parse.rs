@@ -58,17 +58,6 @@ fn ident(i: &str) -> Res<&str> {
 
 // Instruction parsing
 
-/// Separator between components of an instruction
-fn isep(i: &str) -> Res<()> {
-    value(
-        (),
-        verify(
-            recognize(tuple((space0, opt(char(',')), space0))),
-            |res: &str| !res.is_empty(),
-        ),
-    )(i)
-}
-
 fn reg(i: &str) -> Res<Reg> {
     map_opt(preceded(char('r'), one_of("0123456789")), |c| {
         Some(Reg::new(c.to_digit(10)? as usize))?
@@ -103,15 +92,32 @@ fn alu_size(i: &str) -> Res<WordSize> {
     ))(i)
 }
 
+/// Separator between components of an instruction
+fn isep(i: &str) -> Res<()> {
+    value(
+        (),
+        verify(
+            recognize(tuple((space0, opt(char(',')), space0))),
+            |res: &str| !res.is_empty(),
+        ),
+    )(i)
+}
+
+macro_rules! instr {
+    ( $head:expr, $first:expr $(, $($tail:expr),* )? ) => {
+        tuple((terminated($head, space1), $first $(, $(preceded(isep, $tail)),* )? ))
+    };
+}
+
 fn unary(i: &str) -> Res<Instr> {
     let op = alt((
         value(UnAlu::Neg, tag("neg")),
         value(UnAlu::Le, tag("le")),
         value(UnAlu::Be, tag("be")),
     ));
-    map(tuple((op, alu_size, space1, reg)), |(op, size, _, reg)| {
-        Instr::Unary(size, op, reg)
-    })(i)
+    instr!(pair(op, alu_size), reg)
+        .map(|((op, size), reg)| Instr::Unary(size, op, reg))
+        .parse(i)
 }
 
 fn binary(i: &str) -> Res<Instr> {
@@ -129,10 +135,9 @@ fn binary(i: &str) -> Res<Instr> {
         value(BinAlu::Rsh, tag("rsh")),
         value(BinAlu::Arsh, tag("arsh")),
     ));
-    map(
-        tuple((op, alu_size, space1, reg, isep, reg_imm)),
-        |(op, size, _, reg, _, reg_imm)| Instr::Binary(size, op, reg, reg_imm),
-    )(i)
+    instr!(pair(op, alu_size), reg, reg_imm)
+        .map(|((op, size), reg, reg_imm)| Instr::Binary(size, op, reg, reg_imm))
+        .parse(i)
 }
 
 fn mem_size(i: &str) -> Res<WordSize> {
@@ -154,26 +159,19 @@ fn mem_ref(i: &str) -> Res<MemRef> {
 
 fn load(i: &str) -> Res<Instr> {
     map(
-        tuple((tag("ldx"), mem_size, isep, reg, isep, mem_ref)),
-        |(_, size, _, reg, _, mref)| Instr::Load(size, reg, mref),
+        instr!(preceded(tag("ldx"), mem_size), reg, mem_ref),
+        |(size, reg, mem_ref)| Instr::Load(size, reg, mem_ref),
     )(i)
 }
 
 fn store(i: &str) -> Res<Instr> {
-    let inner_imm = map(
-        tuple((mem_size, isep, mem_ref, isep, imm)),
-        |(size, _, mref, _, imm)| (size, mref, RegImm::Imm(imm)),
-    );
-
-    let inner_reg = map(
-        preceded(char('x'), tuple((mem_size, isep, mem_ref, isep, reg))),
-        |(size, _, mref, _, reg)| (size, mref, RegImm::Reg(reg)),
-    );
-
-    map(
-        preceded(tag("st"), alt((inner_reg, inner_imm))),
-        |(size, mref, reg_imm)| Instr::Store(size, mref, reg_imm),
-    )(i)
+    instr!(
+        preceded(alt((tag("stx"), tag("st"))), mem_size),
+        mem_ref,
+        reg_imm
+    )
+    .map(|(size, mref, reg_imm)| Instr::Store(size, mref, reg_imm))
+    .parse(i)
 }
 
 fn jmp_target(i: &str) -> Res<JmpTarget> {
@@ -198,18 +196,17 @@ fn jcc(i: &str) -> Res<Instr> {
         value(Cc::Sle, tag("sle")),
     ));
     map(
-        tuple((char('j'), cc, space1, reg, isep, reg_imm, isep, jmp_target)),
-        |(_, cc, _, lhs, _, rhs, _, target)| Instr::Jcc(cc, lhs, rhs, target),
+        instr!(preceded(char('j'), cc), reg, reg_imm, jmp_target),
+        |(cc, lhs, rhs, target)| Instr::Jcc(cc, lhs, rhs, target),
     )(i)
 }
 
 fn instr(i: &str) -> Res<Instr> {
     let jmp = map(preceded(pair(tag("ja"), space1), jmp_target), Instr::Jmp);
     let call = map(preceded(pair(tag("call"), space1), imm), Instr::Call);
-    let load_imm = map(
-        tuple((tag("lddw"), space1, reg, isep, imm)),
-        |(_, _, reg, _, imm)| Instr::LoadImm(reg, imm),
-    );
+    let load_imm = map(instr!(tag("lddw"), reg, imm), |(_, reg, imm)| {
+        Instr::LoadImm(reg, imm)
+    });
     let exit = value(Instr::Exit, tag("exit"));
     // Missing: LoadMapFd
     alt((unary, binary, load, load_imm, store, jcc, jmp, call, exit))(i)
