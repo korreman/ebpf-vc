@@ -483,3 +483,8 @@ fn gcd() {
         ],
     );
 }
+
+#[test]
+fn rejects_bad_module() {
+    assert!(module("asdf").is_err());
+}

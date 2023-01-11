@@ -3,7 +3,7 @@ use nom::{
     branch::alt,
     bytes::complete::tag,
     character::complete::{alpha1, alphanumeric1, char, newline, one_of, satisfy, space0, space1},
-    combinator::{complete, map, map_opt, map_res, opt, recognize, value, verify},
+    combinator::{complete, eof, map, map_opt, map_res, opt, recognize, value, verify},
     multi::{many0, many0_count, many1, separated_list0},
     sequence::{delimited, pair, preceded, terminated, tuple},
     IResult, Parser,
@@ -237,9 +237,9 @@ fn line(i: &str) -> Res<Line> {
 }
 
 pub fn module(i: &str) -> Res<Module> {
-    complete(delimited(
+    delimited(
         opt(line_sep),
         separated_list0(line_sep, line),
-        opt(line_sep),
-    ))(i)
+        pair(opt(line_sep), eof),
+    )(i)
 }
