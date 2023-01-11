@@ -1,23 +1,24 @@
 use std::{ffi::OsString, process::ExitCode};
 
-use bpaf::Bpaf;
+use argh::FromArgs;
+
 use ebpf_vc::{
     parse::module,
     vc::{ast::Module, vc, ConvertErr},
 };
 
-#[derive(Debug, Clone, Bpaf)]
-#[bpaf(options)]
-struct Command {
-    /// input file to generate conditions for
-    #[bpaf(positional("file"))]
-    input: OsString,
+#[derive(FromArgs)]
+/// A verification condition generator for eBPF.
+struct EbpfVc {
+    /// input to generate conditions for
+    #[argh(positional)]
+    file: OsString,
 }
 
 fn main() -> ExitCode {
-    let opts = command().run();
+    let opts: EbpfVc = argh::from_env();
 
-    let file = std::fs::read_to_string(opts.input);
+    let file = std::fs::read_to_string(opts.file);
     let contents = match file {
         Ok(c) => c,
         Err(e) => {
