@@ -18,7 +18,7 @@ pub fn vc(module: Module) -> Option<Vec<Formula>> {
 
     // Create copy of the CFG with the edges reversed.
     // Pre-emptively cache the pre-assertions as pre-conditions.
-    let mut reverse_graph: Vec<Vec<Label>> = Vec::new();
+    let mut reverse_graph: Vec<Vec<Label>> = module.blocks.iter().map(|_| Vec::new()).collect();
     for (label, block) in module.blocks.iter().enumerate() {
         match block.next {
             Continuation::Jmp(target) => reverse_graph[target].push(label),

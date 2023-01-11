@@ -49,8 +49,8 @@ impl TryInto<super::Module> for crate::ast::Module {
                 }
             }
         }
-        block_idxs.sort();
         block_idxs.push(self.len() - 1);
+        block_idxs.sort();
         block_idxs.dedup();
         // Check all indices (including offsets) are within program limits.
         if *block_idxs.last().unwrap_or(&0) >= self.len() {
