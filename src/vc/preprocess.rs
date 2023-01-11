@@ -1,11 +1,27 @@
 use crate::ast::{Instr, JmpTarget, Label, Line, WordSize};
 use itertools::Itertools;
-use std::collections::HashMap;
+use std::{collections::HashMap};
 
 pub enum ConvertErr {
-    Invalid,
+    JumpBounds { target: usize, bound: usize },
+    NoLabel(String),
     Unsupported,
     Internal,
+}
+
+impl std::fmt::Display for ConvertErr {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            ConvertErr::NoLabel(label) => {
+                f.write_fmt(format_args!("Jump target \"{label}\" doesn't exist"))
+            }
+            ConvertErr::JumpBounds { target, bound } => {
+                f.write_fmt(format_args!("Jump target {target} outside bound {bound}"))
+            }
+            ConvertErr::Unsupported => f.write_fmt(format_args!("Use of unsupported feature")),
+            ConvertErr::Internal => f.write_fmt(format_args!("Internal error in pre-processing")),
+        }
+    }
 }
 
 impl TryInto<super::Module> for crate::ast::Module {
@@ -13,7 +29,7 @@ impl TryInto<super::Module> for crate::ast::Module {
 
     fn try_into(mut self) -> Result<crate::vc::ast::Module, Self::Error> {
         // Indices denoting the start of blocks.
-        let mut block_idxs: Vec<usize> = Vec::new();
+        let mut block_idxs: Vec<usize> = vec![0];
 
         // Collect label indices.
         let mut label_idxs: HashMap<Label, usize> = HashMap::new();
@@ -52,9 +68,16 @@ impl TryInto<super::Module> for crate::ast::Module {
         block_idxs.push(self.len() - 1);
         block_idxs.sort();
         block_idxs.dedup();
+
+        // TODO: Don't check if there are no blocks
         // Check all indices (including offsets) are within program limits.
-        if *block_idxs.last().unwrap_or(&0) >= self.len() {
-            return Err(ConvertErr::Invalid);
+        if let Some(&highest_idx) = block_idxs.last() {
+            if highest_idx > self.len() {
+                return Err(ConvertErr::JumpBounds {
+                    target: highest_idx,
+                    bound: self.len(),
+                });
+            }
         }
 
         // Generate tables mapping from line indices/labels to block indices.
@@ -67,10 +90,12 @@ impl TryInto<super::Module> for crate::ast::Module {
         }
         let get_target = |target: &JmpTarget, next| {
             let res = match target {
-                JmpTarget::Label(l) => label_idxs.get(l),
-                JmpTarget::Offset(o) => idx_map.get(&((next as i64 + *o) as usize)),
+                JmpTarget::Label(l) => label_idxs.get(l).ok_or(ConvertErr::NoLabel(l.clone())),
+                JmpTarget::Offset(o) => idx_map
+                    .get(&((next as i64 + *o) as usize))
+                    .ok_or(ConvertErr::Internal),
             };
-            res.cloned().ok_or(ConvertErr::Invalid)
+            res.cloned()
         };
 
         // Slice the vector into blocks according to these indices.
@@ -83,7 +108,7 @@ impl TryInto<super::Module> for crate::ast::Module {
             .map(|(&idx, &next)| -> Result<super::Block, ConvertErr> {
                 let mut slice = &self[idx..next];
                 let mut last_is_not_cont = false;
-                let next = match slice.last().ok_or(ConvertErr::Invalid)? {
+                let next = match slice.last().ok_or(ConvertErr::Internal)? {
                     Line::Instr(i) => match i {
                         Instr::Jmp(t) => super::Continuation::Jmp(get_target(t, next)?),
                         Instr::Jcc(cc, reg, reg_imm, target) => {

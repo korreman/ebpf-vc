@@ -40,12 +40,7 @@ fn main() -> ExitCode {
     let processed_ast = match preprocess_res {
         Ok(p) => p,
         Err(e) => {
-            let estr = match e {
-                ConvertErr::Invalid => "Invalid AST",
-                ConvertErr::Unsupported => "Use of unsupported feature",
-                ConvertErr::Internal => "Internal error in pre-processing",
-            };
-            eprintln!("error: {estr}");
+            eprintln!("error: {e}");
             return ExitCode::FAILURE;
         }
     };
