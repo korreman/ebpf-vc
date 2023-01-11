@@ -99,6 +99,7 @@ pub fn vc(module: Module) -> Option<Vec<Formula>> {
 fn wp(f: &mut FormulaBuilder, instrs: &[Instr], mut cond: Formula) -> Formula {
     for instr in instrs.iter().rev() {
         match instr {
+            // TODO: Use variable acquired from `f` in lhs of quantification.
             Instr::Unary(op, reg) => {
                 let var_name = String::from("v");
                 let v = f.var(var_name.clone());
