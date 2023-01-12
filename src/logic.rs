@@ -189,15 +189,15 @@ impl FormulaBuilder {
     /// Generate a new, unique variable.
     pub fn var(&mut self, mut ident: Ident) -> (Expr, Ident) {
         let counter = self.id_counters.entry(ident.clone()).or_insert(0);
-        ident.push('_');
         ident.extend(format!("{counter}").chars());
         *counter += 1;
         (Expr::Var(ident.clone()), ident)
     }
 
     /// Get the variable representing a register.
-    pub fn reg(&self, reg: Reg) -> Expr {
-        Expr::Var(format!("r{}", reg.get()))
+    pub fn reg(&self, reg: Reg) -> (Expr, Ident) {
+        let id = format!("r{}", reg.get());
+        (Expr::Var(id.clone()), id)
     }
 
     pub fn val(&self, i: Imm) -> Expr {

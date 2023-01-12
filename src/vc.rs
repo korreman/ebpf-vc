@@ -51,9 +51,9 @@ pub fn vc(module: Module) -> Option<Vec<Formula>> {
             // Generate post-condition from continuation.
             let post_cond = match block.next {
                 Continuation::Jcc(cc, lhs, rhs, target_t, target_f) => {
-                    let lhs = f.reg(lhs);
+                    let lhs = f.reg(lhs).0;
                     let rhs = match rhs {
-                        RegImm::Reg(r) => f.reg(r),
+                        RegImm::Reg(r) => f.reg(r).0,
                         RegImm::Imm(i) => f.val(i),
                     };
                     let cond = f.rel(cc, lhs, rhs);
@@ -106,20 +106,26 @@ fn wp(f: &mut FormulaBuilder, instrs: &[Instr], mut cond: Formula) -> Formula {
     for instr in instrs.iter().rev() {
         match instr {
             Instr::Unary(WordSize::B64, op, reg) => {
+                let (t, t_id) = f.reg(*reg);
                 let (v, v_id) = f.var(String::from("v"));
-                let t = f.reg(*reg);
                 let e = f.unop(*op, t);
-                cond = f.forall(v_id, f.implies(f.eq(v, e), cond))
+                cond = f.forall(
+                    v_id.clone(),
+                    f.implies(f.eq(v, e), f.replace(t_id, v_id, cond)),
+                )
             }
             Instr::Binary(WordSize::B64, op, dst, src) => {
                 let (v, v_id) = f.var(String::from("v"));
-                let d = f.reg(*dst);
+                let (d, d_id) = f.reg(*dst);
                 let s = match src {
-                    RegImm::Reg(r) => f.reg(*r),
+                    RegImm::Reg(r) => f.reg(*r).0,
                     RegImm::Imm(i) => f.val(*i),
                 };
                 let e = f.binop(*op, d, s);
-                cond = f.forall(v_id, f.implies(f.eq(v, e), cond))
+                cond = f.forall(
+                    v_id.clone(),
+                    f.implies(f.eq(v, e), f.replace(d_id, v_id, cond)),
+                )
             }
             instr => panic!("not implemented: {instr:?}"),
         }
