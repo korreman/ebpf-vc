@@ -5,8 +5,7 @@ use std::collections::HashMap;
 pub enum ConvertErr {
     JumpBounds { target: usize, bound: usize },
     NoLabel(String),
-    Unsupported,
-    Internal,
+    Unsupported(Instr),
 }
 
 impl std::fmt::Display for ConvertErr {
@@ -18,8 +17,9 @@ impl std::fmt::Display for ConvertErr {
             ConvertErr::JumpBounds { target, bound } => {
                 f.write_fmt(format_args!("Jump target {target} outside bound {bound}"))
             }
-            ConvertErr::Unsupported => f.write_fmt(format_args!("Use of unsupported feature")),
-            ConvertErr::Internal => f.write_fmt(format_args!("Internal error in pre-processing")),
+            ConvertErr::Unsupported(instr) => {
+                f.write_fmt(format_args!("Unsupported instruction: {instr:?}"))
+            }
         }
     }
 }
@@ -91,9 +91,7 @@ impl TryInto<super::Module> for crate::ast::Module {
         let get_target = |target: &JmpTarget, next| {
             let res = match target {
                 JmpTarget::Label(l) => label_idxs.get(l).ok_or(ConvertErr::NoLabel(l.clone())),
-                JmpTarget::Offset(o) => idx_map
-                    .get(&((next as i64 + *o) as usize))
-                    .ok_or(ConvertErr::Internal),
+                JmpTarget::Offset(o) => Ok(&idx_map[&((next as i64 + *o) as usize)]),
             };
             res.cloned()
         };
@@ -108,7 +106,7 @@ impl TryInto<super::Module> for crate::ast::Module {
             .map(|(&idx, &next)| -> Result<super::Block, ConvertErr> {
                 let mut slice = &self[idx..next];
                 let mut last_is_not_cont = false;
-                let next = match slice.last().ok_or(ConvertErr::Internal)? {
+                let next = match slice.last().expect("no slices") {
                     Line::Instr(i) => match i {
                         Instr::Jmp(t) => super::Continuation::Jmp(get_target(t, next)?),
                         Instr::Jcc(cc, reg, reg_imm, target) => {
@@ -122,7 +120,7 @@ impl TryInto<super::Module> for crate::ast::Module {
                             super::Continuation::Jmp(get_target(&JmpTarget::Offset(0), next)?)
                         }
                     },
-                    Line::Label(_) => return Err(ConvertErr::Internal),
+                    Line::Label(_) => panic!("labels should've been filtered by now"),
                 };
 
                 if !last_is_not_cont {
@@ -132,7 +130,6 @@ impl TryInto<super::Module> for crate::ast::Module {
                 let body: Result<Vec<super::Instr>, ConvertErr> = slice
                     .iter()
                     .map(|l| match l {
-                        Line::Label(_) => Err(ConvertErr::Internal),
                         Line::Instr(i) => match i {
                             Instr::Unary(WordSize::B64, op, reg) => {
                                 Ok(super::Instr::Unary(*op, *reg))
@@ -146,8 +143,9 @@ impl TryInto<super::Module> for crate::ast::Module {
                             Instr::Load(WordSize::B64, dst, mref) => {
                                 Ok(super::Instr::Load(*dst, *mref))
                             }
-                            _ => Err(ConvertErr::Internal),
+                            i => Err(ConvertErr::Unsupported(i.clone())),
                         },
+                        Line::Label(_) => panic!("labels should've been filtered by now"),
                     })
                     .collect();
 
