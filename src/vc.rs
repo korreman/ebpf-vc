@@ -57,10 +57,16 @@ pub fn vc(module: Module) -> Option<Vec<Formula>> {
                         RegImm::Imm(i) => f.val(i),
                     };
                     let cond = f.rel(cc, lhs, rhs);
-                    f.or(
-                        f.and(cond.clone(), pre_conds[target_t].clone().unwrap()),
-                        f.and(f.not(cond), pre_conds[target_f].clone().unwrap()),
-                    )
+                    if let (Some(cond_t), Some(cond_f)) =
+                        (&pre_conds[target_t], &pre_conds[target_f])
+                    {
+                        f.or(
+                            f.and(cond.clone(), cond_t.clone()),
+                            f.and(f.not(cond), cond_f.clone()),
+                        )
+                    } else {
+                        continue;
+                    }
                 }
                 Continuation::Jmp(target) => pre_conds[target].clone().unwrap(),
                 Continuation::Exit => f.top(),

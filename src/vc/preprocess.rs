@@ -1,4 +1,4 @@
-use crate::ast::{Instr, JmpTarget, Label, Line, WordSize};
+use crate::ast::{Instr, JmpTarget, Label, Line};
 use itertools::Itertools;
 use std::collections::HashMap;
 
