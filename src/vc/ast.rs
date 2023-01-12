@@ -2,14 +2,17 @@
 //! It currently only supports 64-bit operations.
 
 pub use crate::ast::{BinAlu, Cc, Imm, MemRef, Offset, Reg, RegImm, UnAlu};
-use crate::logic::Formula;
+use crate::{ast::WordSize, logic::Formula};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Instr {
-    Unary(UnAlu, Reg),
-    Binary(BinAlu, Reg, RegImm),
-    Store(MemRef, RegImm),
-    Load(Reg, MemRef),
+    Unary(WordSize, UnAlu, Reg),
+    Binary(WordSize, BinAlu, Reg, RegImm),
+    Store(WordSize, MemRef, RegImm),
+    Load(WordSize, Reg, MemRef),
+    LoadImm(Reg, Imm),
+    LoadMapFd(Reg, Imm),
+    Call(Imm),
 }
 
 pub type Label = usize;

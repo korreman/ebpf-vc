@@ -5,7 +5,7 @@ mod preprocess;
 pub use preprocess::*;
 
 pub mod ast;
-use crate::logic::*;
+use crate::{ast::WordSize, logic::*};
 use ast::*;
 
 pub fn vc(module: Module) -> Option<Vec<Formula>> {
@@ -100,14 +100,14 @@ fn wp(f: &mut FormulaBuilder, instrs: &[Instr], mut cond: Formula) -> Formula {
     for instr in instrs.iter().rev() {
         match instr {
             // TODO: Use variable acquired from `f` in lhs of quantification.
-            Instr::Unary(op, reg) => {
+            Instr::Unary(WordSize::B64, op, reg) => {
                 let var_name = String::from("v");
                 let v = f.var(var_name.clone());
                 let t = f.reg(*reg);
                 let e = f.unop(*op, t);
                 cond = f.forall(var_name, f.implies(f.eq(v, e), cond))
             }
-            Instr::Binary(op, dst, src) => {
+            Instr::Binary(WordSize::B64, op, dst, src) => {
                 let var_name = String::from("v");
                 let v = f.var(var_name.clone());
                 let d = f.reg(*dst);
@@ -118,12 +118,7 @@ fn wp(f: &mut FormulaBuilder, instrs: &[Instr], mut cond: Formula) -> Formula {
                 let e = f.binop(*op, d, s);
                 cond = f.forall(var_name, f.implies(f.eq(v, e), cond))
             }
-            Instr::Store(_, _) => {
-                panic!("not implemented"); /* TODO */
-            }
-            Instr::Load(_, _) => {
-                panic!("not implemented"); /* TODO */
-            }
+            instr => panic!("not implemented: {instr:?}"),
         }
     }
     cond

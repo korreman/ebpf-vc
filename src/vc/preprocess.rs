@@ -127,23 +127,18 @@ impl TryInto<super::Module> for crate::ast::Module {
                     slice = &slice[..slice.len() - 1];
                 }
 
-                let body: Result<Vec<super::Instr>, ConvertErr> = slice
+                let body: Vec<super::Instr> = slice
                     .iter()
                     .map(|l| match l {
                         Line::Instr(i) => match i {
-                            Instr::Unary(WordSize::B64, op, reg) => {
-                                Ok(super::Instr::Unary(*op, *reg))
-                            }
-                            Instr::Binary(WordSize::B64, op, dst, src) => {
-                                Ok(super::Instr::Binary(*op, *dst, *src))
-                            }
-                            Instr::Store(WordSize::B64, mref, reg_imm) => {
-                                Ok(super::Instr::Store(*mref, *reg_imm))
-                            }
-                            Instr::Load(WordSize::B64, dst, mref) => {
-                                Ok(super::Instr::Load(*dst, *mref))
-                            }
-                            i => Err(ConvertErr::Unsupported(i.clone())),
+                            Instr::Unary(s, o, r) => super::Instr::Unary(*s, *o, *r),
+                            Instr::Binary(s, o, d, ri) => super::Instr::Binary(*s, *o, *d, *ri),
+                            Instr::Store(s, m, ri) => super::Instr::Store(*s, *m, *ri),
+                            Instr::Load(s, d, m) => super::Instr::Load(*s, *d, *m),
+                            Instr::LoadImm(r, i) => super::Instr::LoadImm(*r, *i),
+                            Instr::LoadMapFd(r, i) => super::Instr::LoadMapFd(*r, *i),
+                            Instr::Call(i) => super::Instr::Call(*i),
+                            instr => panic!("no case for {instr:?}"),
                         },
                         Line::Label(_) => panic!("labels should've been filtered by now"),
                     })
@@ -151,7 +146,7 @@ impl TryInto<super::Module> for crate::ast::Module {
 
                 Ok(super::Block {
                     pre_assert: None,
-                    body: body?,
+                    body,
                     next,
                 })
             })
