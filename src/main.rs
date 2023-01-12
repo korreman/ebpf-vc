@@ -47,7 +47,9 @@ fn main() -> ExitCode {
 
     let vc_res = vc(processed_ast);
     match vc_res {
-        Some(res) => println!("{res:?}"),
+        Some(res) => for f in res {
+            println!("{f}");
+        },
         None => {
             eprintln!("error: condition generation failed");
             return ExitCode::FAILURE;

@@ -105,24 +105,21 @@ pub fn vc(module: Module) -> Option<Vec<Formula>> {
 fn wp(f: &mut FormulaBuilder, instrs: &[Instr], mut cond: Formula) -> Formula {
     for instr in instrs.iter().rev() {
         match instr {
-            // TODO: Use variable acquired from `f` in lhs of quantification.
             Instr::Unary(WordSize::B64, op, reg) => {
-                let var_name = String::from("v");
-                let v = f.var(var_name.clone());
+                let (v, v_id) = f.var(String::from("v"));
                 let t = f.reg(*reg);
                 let e = f.unop(*op, t);
-                cond = f.forall(var_name, f.implies(f.eq(v, e), cond))
+                cond = f.forall(v_id, f.implies(f.eq(v, e), cond))
             }
             Instr::Binary(WordSize::B64, op, dst, src) => {
-                let var_name = String::from("v");
-                let v = f.var(var_name.clone());
+                let (v, v_id) = f.var(String::from("v"));
                 let d = f.reg(*dst);
                 let s = match src {
                     RegImm::Reg(r) => f.reg(*r),
                     RegImm::Imm(i) => f.val(*i),
                 };
                 let e = f.binop(*op, d, s);
-                cond = f.forall(var_name, f.implies(f.eq(v, e), cond))
+                cond = f.forall(v_id, f.implies(f.eq(v, e), cond))
             }
             instr => panic!("not implemented: {instr:?}"),
         }
