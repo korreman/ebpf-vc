@@ -65,8 +65,8 @@ pub enum QType {
 impl std::fmt::Display for QType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_str(match self {
-            QType::Exists => "∀",
-            QType::Forall => "∃",
+            QType::Exists => "∃",
+            QType::Forall => "∀",
         })
     }
 }

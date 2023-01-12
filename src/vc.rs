@@ -68,7 +68,9 @@ pub fn vc(module: Module) -> Option<Vec<Formula>> {
                         continue;
                     }
                 }
-                Continuation::Jmp(target) => pre_conds[target].clone().unwrap(),
+                Continuation::Jmp(target) => pre_conds[target]
+                    .clone()
+                    .expect("block {target} should already have a pre-condition"),
                 Continuation::Exit => f.top(),
             };
             // Perform WP-calculus on post-condition with block body.
@@ -98,7 +100,13 @@ pub fn vc(module: Module) -> Option<Vec<Formula>> {
         swap(&mut labels, &mut next_labels);
     }
     // Add the pre-condition of the starting block as a VC.
-    verif_conds.push(pre_conds.into_iter().next()??);
+    verif_conds.push(
+        pre_conds
+            .into_iter()
+            .next()
+            .expect("empty input")
+            .expect("didn't reach start"),
+    );
     Some(verif_conds)
 }
 
