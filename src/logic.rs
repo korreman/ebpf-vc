@@ -54,6 +54,7 @@ pub enum BinOp {
     Or,
     Implies,
     Iff,
+    AndAsym,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -97,6 +98,7 @@ impl std::fmt::Display for Formula {
                     BinOp::Or => "∨",
                     BinOp::Implies => "⇒",
                     BinOp::Iff => "⇔",
+                    BinOp::AndAsym => "&&",
                 };
                 f.write_fmt(format_args!("({f1} {op_str} {f2})"))
             }
@@ -148,6 +150,10 @@ impl FormulaBuilder {
 
     pub fn and(&self, a: Formula, b: Formula) -> Formula {
         Formula::Bin(BinOp::And, Box::new((a, b)))
+    }
+
+    pub fn asym_and(&self, a: Formula, b: Formula) -> Formula {
+        Formula::Bin(BinOp::AndAsym, Box::new((a, b)))
     }
 
     pub fn or(&self, a: Formula, b: Formula) -> Formula {

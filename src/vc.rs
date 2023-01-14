@@ -122,25 +122,31 @@ fn wp(f: &mut FormulaBuilder, instrs: &[Instr], mut cond: Formula) -> Formula {
         match instr {
             Instr::Unary(WordSize::B64, op, reg) => {
                 let (t, t_id) = f.reg(*reg);
-                let (v, v_id) = f.var(String::from("v"));
                 let e = f.unop(*op, t);
+
+                let (v, v_id) = f.var(String::from("v"));
                 cond = f.forall(
                     v_id.clone(),
                     f.implies(f.eq(v, e), f.replace(t_id, v_id, cond)),
-                )
+                );
             }
             Instr::Binary(WordSize::B64, op, dst, src) => {
-                let (v, v_id) = f.var(String::from("v"));
                 let (d, d_id) = f.reg(*dst);
                 let s = match src {
                     RegImm::Reg(r) => f.reg(*r).0,
                     RegImm::Imm(i) => f.val(*i),
                 };
-                let e = f.binop(*op, d, s);
+                let e = f.binop(*op, d, s.clone());
+                let (v, v_id) = f.var(String::from("v"));
                 cond = f.forall(
                     v_id.clone(),
                     f.implies(f.eq(v, e), f.replace(d_id, v_id, cond)),
-                )
+                );
+
+                // Handle division/modulo by zero.
+                if op == &BinAlu::Div || op == &BinAlu::Mod {
+                    cond = f.asym_and(f.rel(Cc::Ne, s, f.val(0)), cond);
+                }
             }
             instr => panic!("not implemented: {instr:?}"),
         }
