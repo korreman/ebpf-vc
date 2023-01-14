@@ -88,7 +88,7 @@ pub enum Formula {
 impl std::fmt::Display for Formula {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Formula::Val(b) => f.write_str(if *b { "⊤ " } else { "⊥ " }),
+            Formula::Val(b) => f.write_str(if *b { "T" } else { "F" }),
             Formula::Not(form) => f.write_fmt(format_args!("¬({form})")),
             Formula::Bin(op, fs) => {
                 let (f1, f2) = &**fs;
