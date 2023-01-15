@@ -29,12 +29,12 @@ impl std::fmt::Display for Expr {
             Expr::Binary(op, es) => {
                 let (e1, e2) = &**es;
                 let op_str = match op {
-                    BinAlu::Mov => "(mov)",
+                    BinAlu::Mov => return f.write_fmt(format_args!("{e2}")),
                     BinAlu::Add => "+",
                     BinAlu::Sub => "-",
                     BinAlu::Mul => "*",
-                    BinAlu::Div => "/",
-                    BinAlu::Mod => "%",
+                    BinAlu::Div => return f.write_fmt(format_args!("div {e1} {e2}")),
+                    BinAlu::Mod => return f.write_fmt(format_args!("mod {e1} {e2}")),
                     BinAlu::And => "&",
                     BinAlu::Or => "|",
                     BinAlu::Xor => "^",
@@ -66,8 +66,8 @@ pub enum QType {
 impl std::fmt::Display for QType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_str(match self {
-            QType::Exists => "∃",
-            QType::Forall => "∀",
+            QType::Exists => "exists",
+            QType::Forall => "forall",
         })
     }
 }
@@ -78,50 +78,42 @@ pub enum Formula {
     Not(Box<Formula>),
     Bin(BinOp, Box<(Formula, Formula)>),
     Quant(QType, Ident, Box<Formula>),
-    Replace {
-        prev: Ident,
-        new: Ident,
-        f: Box<Formula>,
-    },
     Rel(Cc, Expr, Expr),
 }
 
 impl std::fmt::Display for Formula {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Formula::Val(b) => f.write_str(if *b { "T" } else { "F" }),
-            Formula::Not(form) => f.write_fmt(format_args!("¬({form})")),
+            Formula::Val(b) => f.write_str(if *b { "true" } else { "false" }),
+            Formula::Not(form) => f.write_fmt(format_args!("not ({form})")),
             Formula::Bin(op, fs) => {
                 let (f1, f2) = &**fs;
                 let op_str = match op {
-                    BinOp::And => "∧",
-                    BinOp::Or => "∨",
-                    BinOp::Implies => "⇒",
-                    BinOp::Iff => "⇔",
+                    BinOp::And => "/\\",
+                    BinOp::Or => "\\/",
+                    BinOp::Implies => "->",
+                    BinOp::Iff => "<->",
                     BinOp::AndAsym => "&&",
                 };
                 f.write_fmt(format_args!("({f1} {op_str} {f2})"))
             }
             Formula::Quant(q, id, form) => f.write_fmt(format_args!("({q} {id}. {form})")),
-            Formula::Replace { prev, new, f: form } => {
-                f.write_fmt(format_args!("({form})[{prev} ↦ {new}]"))
-            },
             Formula::Rel(rel, e1, e2) => {
                 let rel_str = match rel {
                     Cc::Eq => "=",
                     Cc::Gt => ">",
-                    Cc::Ge => "≥",
+                    Cc::Ge => ">=",
                     Cc::Lt => "<",
-                    Cc::Le => "≤",
+                    Cc::Le => "<=",
                     Cc::Set => todo!(),
-                    Cc::Ne => "≠",
-                    Cc::Sgt => "⊳",
-                    Cc::Sge => "⊵",
-                    Cc::Slt => "⊲",
-                    Cc::Sle => "⊴",
+                    Cc::Ne => "<>",
+                    Cc::Sgt => todo!(),
+                    Cc::Sge => todo!(),
+                    Cc::Slt => todo!(),
+                    Cc::Sle => todo!(),
                 };
                 f.write_fmt(format_args!("({e1} {rel_str} {e2})"))
-            },
+            }
         }
     }
 }
@@ -176,12 +168,44 @@ impl FormulaBuilder {
         Formula::Quant(QType::Exists, ident, Box::new(f))
     }
 
-    pub fn replace(&self, prev: Ident, new: Ident, f: Formula) -> Formula {
-        Formula::Replace {
-            prev,
-            new,
-            f: Box::new(f),
+    pub fn replace(&self, prev: &Ident, new: &Ident, mut f: Formula) -> Formula {
+        match &mut f {
+            Formula::Not(inner) => **inner = self.replace(prev, new, *inner.clone()),
+            Formula::Bin(_, fs) => {
+                fs.0 = self.replace(prev, new, fs.0.clone());
+                fs.1 = self.replace(prev, new, fs.1.clone());
+            }
+            Formula::Quant(_, qvar, inner) => {
+                if prev != qvar {
+                    **inner = self.replace(prev, new, *inner.clone());
+                }
+            }
+            Formula::Rel(_, e1, e2) => {
+                *e1 = self.replace_expr(prev, new, e1.clone());
+                *e2 = self.replace_expr(prev, new, e2.clone());
+            }
+            Formula::Val(_) => (),
         }
+        f
+    }
+
+    pub fn replace_expr(&self, prev: &Ident, new: &Ident, mut e: Expr) -> Expr {
+        match &mut e {
+            Expr::Var(x) => {
+                if x == prev {
+                    *x = new.clone();
+                }
+            }
+            Expr::Unary(_, inner) => {
+                **inner = self.replace_expr(prev, new, *inner.clone());
+            }
+            Expr::Binary(_, es) => {
+                es.0 = self.replace_expr(prev, new, es.0.clone());
+                es.1 = self.replace_expr(prev, new, es.1.clone());
+            }
+            Expr::Val(_) => (),
+        }
+        e
     }
 
     pub fn rel(&self, cc: Cc, a: Expr, b: Expr) -> Formula {

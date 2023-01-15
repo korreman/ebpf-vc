@@ -127,7 +127,7 @@ fn wp(f: &mut FormulaBuilder, instrs: &[Instr], mut cond: Formula) -> Formula {
                 let (v, v_id) = f.var(String::from("v"));
                 cond = f.forall(
                     v_id.clone(),
-                    f.implies(f.eq(v, e), f.replace(t_id, v_id, cond)),
+                    f.implies(f.eq(v, e), f.replace(&t_id, &v_id, cond)),
                 );
             }
             Instr::Binary(WordSize::B64, op, dst, src) => {
@@ -140,7 +140,7 @@ fn wp(f: &mut FormulaBuilder, instrs: &[Instr], mut cond: Formula) -> Formula {
                 let (v, v_id) = f.var(String::from("v"));
                 cond = f.forall(
                     v_id.clone(),
-                    f.implies(f.eq(v, e), f.replace(d_id, v_id, cond)),
+                    f.implies(f.eq(v, e), f.replace(&d_id, &v_id, cond)),
                 );
 
                 // Handle division/modulo by zero.
