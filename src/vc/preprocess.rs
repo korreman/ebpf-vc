@@ -28,81 +28,81 @@ impl TryInto<super::Module> for crate::ast::Module {
     type Error = ConvertErr;
 
     fn try_into(mut self) -> Result<crate::vc::ast::Module, Self::Error> {
-        // Indices denoting the start of blocks.
-        let mut block_idxs: Vec<usize> = vec![0];
+        let mut jump_targets: Vec<usize> = vec![0];
+        let mut labels: HashMap<Label, usize> = HashMap::new();
 
-        // Collect label indices.
-        let mut label_idxs: HashMap<Label, usize> = HashMap::new();
+        // Collect labels and targets of jumps to use as split indices.
+        // Filter out the labels at the same time.
         let mut counter = 0;
-        self.retain(|line| {
-            if let Line::Label(label) = line {
-                block_idxs.push(counter);
-                label_idxs.insert(label.clone(), counter);
+        self.retain(|line| match line {
+            Line::Label(l) => {
+                jump_targets.push(counter);
+                labels.insert(l.clone(), counter);
                 false
-            } else {
+            }
+            Line::Instr(i) => {
+                match i {
+                    Instr::Jmp(JmpTarget::Offset(o)) => {
+                        jump_targets.push((counter as i64 + o) as usize + 1)
+                    }
+                    Instr::Jcc(_, _, _, target) => {
+                        jump_targets.push(counter + 1);
+                        if let JmpTarget::Offset(o) = target {
+                            jump_targets.push((counter as i64 + o) as usize + 1)
+                        }
+                    }
+                    Instr::Exit => jump_targets.push(counter + 1),
+                    _ => (),
+                }
                 counter += 1;
                 true
             }
         });
+        jump_targets.push(self.len() - 1);
+        jump_targets.sort();
+        jump_targets.dedup();
 
-        // Collect jump target indices.
-        for (idx, line) in self.iter().enumerate() {
-            if let Line::Instr(instr) = line {
-                match instr {
-                    Instr::Jmp(JmpTarget::Offset(o)) => {
-                        block_idxs.push((idx as i64 + o) as usize + 1)
-                    }
-                    Instr::Jcc(_, _, _, target) => {
-                        block_idxs.push(idx + 1);
-                        if let JmpTarget::Offset(o) = target {
-                            block_idxs.push((idx as i64 + o) as usize + 1)
-                        }
-                    }
-                    Instr::Exit => block_idxs.push(idx + 1),
-                    _ => (),
-                }
-            }
-        }
-        block_idxs.push(self.len() - 1);
-        block_idxs.sort();
-        block_idxs.dedup();
-
-        // TODO: Don't check if there are no blocks
-        // Check all indices (including offsets) are within program limits.
-        if let Some(&highest_idx) = block_idxs.last() {
-            if highest_idx > self.len() {
-                return Err(ConvertErr::JumpBounds {
-                    target: highest_idx,
-                    bound: self.len(),
-                });
-            }
+        // Verify that all jump targets (including offsets) are within program limits.
+        let highest_target = *jump_targets.last().unwrap();
+        if highest_target > self.len() {
+            return Err(ConvertErr::JumpBounds {
+                target: highest_target,
+                bound: self.len(),
+            });
         }
 
-        // Generate tables mapping from line indices/labels to block indices.
+        // Generate tables mapping from line indices to block indices.
         let mut idx_map = HashMap::new();
-        for (new_idx, &old_idx) in block_idxs.iter().enumerate() {
+        for (new_idx, &old_idx) in jump_targets.iter().enumerate() {
             idx_map.insert(old_idx, new_idx);
         }
-        for idx in label_idxs.values_mut() {
+
+        // Make labels point to the new block indices instead of line indices.
+        for idx in labels.values_mut() {
             *idx = idx_map[idx];
         }
+
+        // Helper closure that converts jump targets to block indices.
         let get_target = |target: &JmpTarget, next| {
             let res = match target {
-                JmpTarget::Label(l) => label_idxs.get(l).ok_or(ConvertErr::NoLabel(l.clone())),
+                JmpTarget::Label(l) => labels.get(l).ok_or(ConvertErr::NoLabel(l.clone())),
                 JmpTarget::Offset(o) => Ok(&idx_map[&((next as i64 + *o) as usize)]),
             };
             res.cloned()
         };
 
-        // Slice the vector into blocks according to these indices.
+        // Slice the vector into blocks according to these jump targets.
         // Take each slice and package up as a block.
+        // - Convert instructions to limited subset.
         // - Resolve jump targets to block indices
         // - If a block doesn't end with a jump or exit, create a jump to the succeeding block.
-        let blocks: Result<Vec<super::Block>, ConvertErr> = block_idxs
+        let blocks: Result<Vec<super::Block>, ConvertErr> = jump_targets
             .iter()
             .tuple_windows()
             .map(|(&idx, &next)| -> Result<super::Block, ConvertErr> {
                 let mut slice = &self[idx..next];
+
+                // Generate the appropriate continuation for the block.
                 let mut last_is_not_cont = false;
                 let next = match slice.last().expect("no slices") {
                     Line::Instr(i) => match i {
@@ -121,10 +121,12 @@ impl TryInto<super::Module> for crate::ast::Module {
                     Line::Label(_) => panic!("labels should've been filtered by now"),
                 };
 
+                // Remove the last instruction from the body if it's a continuation.
                 if !last_is_not_cont {
                     slice = &slice[..slice.len() - 1];
                 }
 
+                // Convert the body to constrained instruction set.
                 let body: Vec<super::Instr> = slice
                     .iter()
                     .map(|l| match l {
