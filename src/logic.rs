@@ -1,17 +1,7 @@
 //! A language for logic formulas.
 use std::collections::HashMap;
 
-use crate::ast::{BinAlu, Cc, Imm, Reg, UnAlu};
-
-pub type Ident = String;
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum Expr {
-    Val(Imm),
-    Var(Ident),
-    Unary(UnAlu, Box<Expr>),
-    Binary(BinAlu, Box<(Expr, Expr)>),
-}
+use crate::ast::*;
 
 impl std::fmt::Display for Expr {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -48,21 +38,6 @@ impl std::fmt::Display for Expr {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum BinOp {
-    And,
-    Or,
-    Implies,
-    Iff,
-    AndAsym,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum QType {
-    Exists,
-    Forall,
-}
-
 impl std::fmt::Display for QType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_str(match self {
@@ -70,15 +45,6 @@ impl std::fmt::Display for QType {
             QType::Forall => "forall",
         })
     }
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum Formula {
-    Val(bool),
-    Not(Box<Formula>),
-    Bin(BinOp, Box<(Formula, Formula)>),
-    Quant(QType, Ident, Box<Formula>),
-    Rel(Cc, Expr, Expr),
 }
 
 impl std::fmt::Display for Formula {
@@ -89,11 +55,11 @@ impl std::fmt::Display for Formula {
             Formula::Bin(op, fs) => {
                 let (f1, f2) = &**fs;
                 let op_str = match op {
-                    BinOp::And => "/\\",
-                    BinOp::Or => "\\/",
-                    BinOp::Implies => "->",
-                    BinOp::Iff => "<->",
-                    BinOp::AndAsym => "&&",
+                    FBinOp::And => "/\\",
+                    FBinOp::Or => "\\/",
+                    FBinOp::Implies => "->",
+                    FBinOp::Iff => "<->",
+                    FBinOp::AndAsym => "&&",
                 };
                 f.write_fmt(format_args!("({f1} {op_str} {f2})"))
             }
@@ -141,23 +107,23 @@ impl FormulaBuilder {
     }
 
     pub fn and(&self, a: Formula, b: Formula) -> Formula {
-        Formula::Bin(BinOp::And, Box::new((a, b)))
+        Formula::Bin(FBinOp::And, Box::new((a, b)))
     }
 
     pub fn asym_and(&self, a: Formula, b: Formula) -> Formula {
-        Formula::Bin(BinOp::AndAsym, Box::new((a, b)))
+        Formula::Bin(FBinOp::AndAsym, Box::new((a, b)))
     }
 
     pub fn or(&self, a: Formula, b: Formula) -> Formula {
-        Formula::Bin(BinOp::Or, Box::new((a, b)))
+        Formula::Bin(FBinOp::Or, Box::new((a, b)))
     }
 
     pub fn implies(&self, a: Formula, b: Formula) -> Formula {
-        Formula::Bin(BinOp::Implies, Box::new((a, b)))
+        Formula::Bin(FBinOp::Implies, Box::new((a, b)))
     }
 
     pub fn iff(&self, a: Formula, b: Formula) -> Formula {
-        Formula::Bin(BinOp::Iff, Box::new((a, b)))
+        Formula::Bin(FBinOp::Iff, Box::new((a, b)))
     }
 
     pub fn forall(&self, ident: Ident, f: Formula) -> Formula {

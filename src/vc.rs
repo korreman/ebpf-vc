@@ -3,7 +3,10 @@ mod preprocess;
 pub use preprocess::*;
 
 pub mod ast;
-use crate::{ast::WordSize, logic::*};
+use crate::{
+    ast::{Formula, WordSize},
+    logic::*,
+};
 use ast::*;
 
 enum BlockStatus {

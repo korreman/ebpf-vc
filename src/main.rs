@@ -47,9 +47,11 @@ fn main() -> ExitCode {
 
     let vc_res = vc(processed_ast);
     match vc_res {
-        Some(res) => for f in res {
-            println!("use mach.int.UInt64\nuse int.ComputerDivision\n\ngoal G: {f}");
-        },
+        Some(res) => {
+            for f in res {
+                println!("use mach.int.UInt64\nuse int.ComputerDivision\n\ngoal G: {f}");
+            }
+        }
         None => {
             eprintln!("error: condition generation failed");
             return ExitCode::FAILURE;

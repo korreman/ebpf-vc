@@ -2,7 +2,7 @@
 //! It currently only supports 64-bit operations.
 
 pub use crate::ast::{BinAlu, Cc, Imm, MemRef, Offset, Reg, RegImm, UnAlu};
-use crate::{ast::WordSize, logic::Formula};
+use crate::ast::{Formula, WordSize};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Instr {

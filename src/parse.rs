@@ -60,7 +60,7 @@ fn ident(i: &str) -> Res<&str> {
 
 fn reg(i: &str) -> Res<Reg> {
     map_opt(preceded(char('r'), one_of("0123456789")), |c| {
-        Some(Reg::new(c.to_digit(10)? as usize))?
+        Some(Reg::new(c.to_digit(10)? as u8))?
     })(i)
 }
 

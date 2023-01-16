@@ -25,7 +25,7 @@ pub enum BinAlu {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct Reg(usize);
+pub struct Reg(u8);
 impl Reg {
     pub const R0: Self = Reg(0);
     pub const R1: Self = Reg(1);
@@ -38,7 +38,7 @@ impl Reg {
     pub const R8: Self = Reg(8);
     pub const R9: Self = Reg(9);
 
-    pub fn new(id: usize) -> Option<Self> {
+    pub fn new(id: u8) -> Option<Self> {
         if id < 10 {
             Some(Self(id))
         } else {
@@ -46,7 +46,7 @@ impl Reg {
         }
     }
 
-    pub fn get(&self) -> usize {
+    pub fn get(&self) -> u8 {
         self.0
     }
 }
@@ -85,13 +85,46 @@ pub enum Instr {
     Exit,
 }
 
+pub type Ident = String;
+
+/// Expression used for formulas.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Expr {
+    Val(Imm),
+    Var(Ident),
+    Unary(UnAlu, Box<Expr>),
+    Binary(BinAlu, Box<(Expr, Expr)>),
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum FBinOp {
+    And,
+    Or,
+    Implies,
+    Iff,
+    AndAsym,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum QType {
+    Exists,
+    Forall,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Formula {
+    Val(bool),
+    Not(Box<Formula>),
+    Bin(FBinOp, Box<(Formula, Formula)>),
+    Quant(QType, Ident, Box<Formula>),
+    Rel(Cc, Expr, Expr),
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Line {
     Label(Label),
+    Assert(Formula),
     Instr(Instr),
-    // TODO: Assertions
 }
 
 pub type Module = Vec<Line>;
-
-// TODO: Validation

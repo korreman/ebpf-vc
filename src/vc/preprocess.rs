@@ -1,6 +1,6 @@
 use crate::ast::{Instr, JmpTarget, Label, Line};
 use itertools::Itertools;
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 
 pub enum ConvertErr {
     JumpBounds { target: usize, bound: usize },
@@ -57,6 +57,7 @@ impl TryInto<super::Module> for crate::ast::Module {
                 counter += 1;
                 true
             }
+            Line::Assert(_) => todo!(),
         });
         jump_targets.push(self.len() - 1);
         jump_targets.sort();
@@ -119,6 +120,7 @@ impl TryInto<super::Module> for crate::ast::Module {
                         }
                     },
                     Line::Label(_) => panic!("labels should've been filtered by now"),
+                    Line::Assert(_) => todo!(),
                 };
 
                 // Remove the last instruction from the body if it's a continuation.
@@ -141,6 +143,7 @@ impl TryInto<super::Module> for crate::ast::Module {
                             instr => panic!("no case for {instr:?}"),
                         },
                         Line::Label(_) => panic!("labels should've been filtered by now"),
+                        Line::Assert(_) => todo!(),
                     })
                     .collect();
 
