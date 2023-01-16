@@ -1,6 +1,6 @@
 use crate::ast::{Instr, JmpTarget, Label, Line};
 use itertools::Itertools;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 pub enum ConvertErr {
     JumpBounds { target: usize, bound: usize },
@@ -33,13 +33,11 @@ impl TryInto<super::Module> for crate::ast::Module {
 
         // Collect label indices.
         let mut label_idxs: HashMap<Label, usize> = HashMap::new();
-        let mut idx_labels: HashMap<usize, Label> = HashMap::new();
         let mut counter = 0;
         self.retain(|line| {
             if let Line::Label(label) = line {
                 block_idxs.push(counter);
                 label_idxs.insert(label.clone(), counter);
-                idx_labels.insert(counter, label.clone());
                 false
             } else {
                 counter += 1;
