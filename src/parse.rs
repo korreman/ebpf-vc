@@ -212,6 +212,8 @@ fn instr(i: &str) -> Res<Instr> {
     alt((unary, binary, load, load_imm, store, jcc, jmp, call, exit))(i)
 }
 
+// Assertion parsing
+
 // Structural parsing
 
 fn line_sep(i: &str) -> Res<()> {
