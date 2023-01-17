@@ -109,19 +109,16 @@ macro_rules! instr {
     };
 }
 
-fn unary(i: &str) -> Res<Instr> {
-    let op = alt((
+fn un_alu(i: &str) -> Res<UnAlu> {
+    alt((
         value(UnAlu::Neg, tag("neg")),
         value(UnAlu::Le, tag("le")),
         value(UnAlu::Be, tag("be")),
-    ));
-    instr!(pair(op, alu_size), reg)
-        .map(|((op, size), reg)| Instr::Unary(size, op, reg))
-        .parse(i)
+    ))(i)
 }
 
-fn binary(i: &str) -> Res<Instr> {
-    let op = alt((
+fn bin_alu(i: &str) -> Res<BinAlu> {
+    alt((
         value(BinAlu::Mov, tag("mov")),
         value(BinAlu::Add, tag("add")),
         value(BinAlu::Sub, tag("sub")),
@@ -134,8 +131,17 @@ fn binary(i: &str) -> Res<Instr> {
         value(BinAlu::Lsh, tag("lsh")),
         value(BinAlu::Rsh, tag("rsh")),
         value(BinAlu::Arsh, tag("arsh")),
-    ));
-    instr!(pair(op, alu_size), reg, reg_imm)
+    ))(i)
+}
+
+fn unary(i: &str) -> Res<Instr> {
+    instr!(pair(un_alu, alu_size), reg)
+        .map(|((op, size), reg)| Instr::Unary(size, op, reg))
+        .parse(i)
+}
+
+fn binary(i: &str) -> Res<Instr> {
+    instr!(pair(bin_alu, alu_size), reg, reg_imm)
         .map(|((op, size), reg, reg_imm)| Instr::Binary(size, op, reg, reg_imm))
         .parse(i)
 }
@@ -213,6 +219,81 @@ fn instr(i: &str) -> Res<Instr> {
 }
 
 // Assertion parsing
+fn parens<'a, T>(p: impl FnMut(&'a str) -> Res<'a, T>) -> impl FnMut(&'a str) -> Res<'a, T> {
+    delimited(
+        terminated(char('('), space0),
+        terminated(p, space0),
+        terminated(char(')'), space0),
+    )
+}
+
+fn expr(i: &str) -> Res<Expr> {
+    let unary = tuple((un_alu, parens(expr))).map(|(op, inner)| Expr::Unary(op, Box::new(inner)));
+    let binary = tuple((
+        bin_alu,
+        parens(tuple((expr, space0, char(','), space0, expr))),
+    ))
+    .map(|(op, (a, _, _, _, b))| Expr::Binary(op, Box::new((a, b))));
+    alt((
+        ident.map(|id| Expr::Var(id.to_owned())),
+        imm.map(Expr::Val),
+        unary,
+        binary,
+    ))(i)
+}
+
+fn formula(i: &str) -> Res<Formula> {
+    let parenthesized = parens(formula);
+    let val = alt((
+        value(Formula::Val(true), tag("true")),
+        value(Formula::Val(false), tag("false")),
+    ));
+    let not = preceded(tag("not"), parens(formula)).map(|inner| Formula::Not(Box::new(inner)));
+
+    let bin_op = alt((
+        value(FBinOp::And, tag("/\\")),
+        value(FBinOp::Or, tag("\\/")),
+        value(FBinOp::Implies, tag("->")),
+        value(FBinOp::Iff, tag("<->")),
+        value(FBinOp::AndAsym, tag("&&")),
+    ));
+
+    let binary = tuple((
+        bin_op,
+        parens(tuple((formula, space0, char(','), space0, formula))),
+    ))
+    .map(|(op, (a, _, _, _, b))| Formula::Bin(op, Box::new((a, b))));
+
+    let quantifier = alt((
+        value(QType::Forall, tag("forall")),
+        value(QType::Exists, tag("exists")),
+    ));
+
+    let quant = tuple((quantifier, space1, ident, char('.'), space0, formula)).map(
+        |(quantifier, _, name, _, _, inner)| {
+            Formula::Quant(quantifier, name.to_owned(), Box::new(inner))
+        },
+    );
+
+    let rel_op = alt((
+        value(Cc::Eq, tag("=")),
+        value(Cc::Ne, tag("<>")),
+        value(Cc::Gt, tag(">")),
+        value(Cc::Lt, tag("<")),
+        value(Cc::Ge, tag(">=")),
+        value(Cc::Le, tag("<=")),
+        // TODO: signed comparisons and 'set'
+    ));
+
+    let rel = tuple((expr, space0, rel_op, space0, expr))
+        .map(|(e1, _, op, _, e2)| Formula::Rel(op, e1, e2));
+
+    alt((parenthesized, val, not, binary, quant, rel))(i)
+}
+
+fn assertion(i: &str) -> Res<Formula> {
+    preceded(pair(tag("assert"), space0), formula)(i)
+}
 
 // Structural parsing
 
@@ -235,7 +316,11 @@ fn label(i: &str) -> Res<Label> {
 }
 
 fn line(i: &str) -> Res<Line> {
-    alt((label.map(Line::Label), instr.map(Line::Instr)))(i)
+    alt((
+        label.map(Line::Label),
+        assertion.map(Line::Assert),
+        instr.map(Line::Instr),
+    ))(i)
 }
 
 pub fn module(i: &str) -> Res<Module> {
