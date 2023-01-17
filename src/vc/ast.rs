@@ -4,8 +4,9 @@
 pub use crate::ast::{BinAlu, Cc, Imm, MemRef, Offset, Reg, RegImm, UnAlu};
 use crate::ast::{Formula, WordSize};
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Instr {
+    Assert(Formula),
     Unary(WordSize, UnAlu, Reg),
     Binary(WordSize, BinAlu, Reg, RegImm),
     Store(WordSize, MemRef, RegImm),

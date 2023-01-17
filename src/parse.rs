@@ -227,6 +227,10 @@ fn parens<'a, T>(p: impl FnMut(&'a str) -> Res<'a, T>) -> impl FnMut(&'a str) ->
     )
 }
 
+fn reg_ident(i: &str) -> Res<Ident> {
+    map(reg, |r| format!("r{}", r.get()))(i)
+}
+
 fn expr(i: &str) -> Res<Expr> {
     let unary = tuple((un_alu, parens(expr))).map(|(op, inner)| Expr::Unary(op, Box::new(inner)));
     let binary = tuple((
@@ -234,12 +238,8 @@ fn expr(i: &str) -> Res<Expr> {
         parens(tuple((expr, space0, char(','), space0, expr))),
     ))
     .map(|(op, (a, _, _, _, b))| Expr::Binary(op, Box::new((a, b))));
-    alt((
-        ident.map(|id| Expr::Var(id.to_owned())),
-        imm.map(Expr::Val),
-        unary,
-        binary,
-    ))(i)
+
+    alt((reg_ident.map(Expr::Var), imm.map(Expr::Val), unary, binary))(i)
 }
 
 fn formula(i: &str) -> Res<Formula> {
