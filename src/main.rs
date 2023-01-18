@@ -35,6 +35,7 @@ fn main() -> ExitCode {
             return ExitCode::FAILURE;
         }
     };
+    //println!("{ast:#?}\n");
 
     let preprocess_res: Result<Module, ConvertErr> = ast.try_into();
     let processed_ast = match preprocess_res {
@@ -44,16 +45,18 @@ fn main() -> ExitCode {
             return ExitCode::FAILURE;
         }
     };
+    //println!("{processed_ast:#?}\n");
 
     let vc_res = vc(processed_ast);
     match vc_res {
-        Some(res) => {
-            for f in res {
-                println!("use mach.int.UInt64\nuse int.ComputerDivision\n\ngoal G: {f}");
+        Ok(res) => {
+            println!("use mach.int.UInt64\nuse int.ComputerDivision\n");
+            for (i, f) in res.iter().enumerate() {
+                println!("goal G{i}: {f}");
             }
         }
-        None => {
-            eprintln!("error: condition generation failed");
+        Err(e) => {
+            eprintln!("error: {e}");
             return ExitCode::FAILURE;
         }
     };

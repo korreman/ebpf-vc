@@ -1,6 +1,6 @@
 //! Verification condition generation.
 mod preprocess;
-use std::collections::HashMap;
+use std::{collections::HashMap, fmt::Display};
 
 pub use preprocess::*;
 
@@ -11,12 +11,26 @@ use crate::{
 };
 use ast::*;
 
+pub enum VcError {
+    NoPreAssert(Label),
+}
+
+impl Display for VcError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            VcError::NoPreAssert(label) => {
+                f.write_fmt(format_args!("missing pre-assertion for {label:?}"))
+            }
+        }
+    }
+}
+
 enum BlockStatus {
     Pending,
     PreCond(Formula),
 }
 
-pub fn vc(module: Module) -> Option<Vec<Formula>> {
+pub fn vc(module: Module) -> Result<Vec<Formula>, VcError> {
     // Stores results.
     let mut verif_conds: Vec<Formula> = Vec::new();
 
@@ -25,11 +39,15 @@ pub fn vc(module: Module) -> Option<Vec<Formula>> {
     let mut pre_conds: HashMap<Label, BlockStatus> = HashMap::new();
 
     // Perform a reverse breadth-first traversal of CFG.
-    let mut stack = vec!["@0".to_owned()];
+    let mut stack = vec![module.start];
     let mut f = FormulaBuilder::new();
     while let Some(label) = stack.pop() {
+        drop(
+            pre_conds
+                .entry(label.clone())
+                .or_insert(BlockStatus::Pending),
+        );
         let block = &module.blocks[&label];
-        pre_conds.insert(label.clone(), BlockStatus::Pending); // TODO: wont this overwrite results?
 
         // Generate post-condition from continuation.
         // TODO: Generalize retrieval of post-conditions.
@@ -41,7 +59,7 @@ pub fn vc(module: Module) -> Option<Vec<Formula>> {
                     if let Some(c) = &module.blocks[target].pre_assert {
                         c.clone()
                     } else {
-                        return None;
+                        return Err(VcError::NoPreAssert(target.clone()));
                     }
                 }
                 None => {
@@ -57,7 +75,7 @@ pub fn vc(module: Module) -> Option<Vec<Formula>> {
                         if let Some(c) = &module.blocks[target_t].pre_assert {
                             c.clone()
                         } else {
-                            return None;
+                            return Err(VcError::NoPreAssert(target_t.clone()));
                         }
                     }
                     None => {
@@ -72,7 +90,7 @@ pub fn vc(module: Module) -> Option<Vec<Formula>> {
                         if let Some(c) = &module.blocks[target_f].pre_assert {
                             c.clone()
                         } else {
-                            return None;
+                            return Err(VcError::NoPreAssert(target_f.clone()));
                         }
                     }
                     None => {
@@ -114,7 +132,7 @@ pub fn vc(module: Module) -> Option<Vec<Formula>> {
         BlockStatus::PreCond(c) => c.clone(),
         _ => panic!("starting block never resolved"),
     });
-    Some(verif_conds)
+    Ok(verif_conds)
 }
 
 fn wp(f: &mut FormulaBuilder, instrs: &[Instr], mut cond: Formula) -> Formula {

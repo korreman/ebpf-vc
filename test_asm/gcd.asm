@@ -5,6 +5,7 @@ mov r1, 27
 
 ;; routine
 loop:
+assert r1 <> 0
 jeq r1, 0, end
 mov r2 r0
 mod r2 r1

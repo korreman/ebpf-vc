@@ -75,10 +75,10 @@ impl TryInto<super::Module> for crate::ast::Module {
         for line in self {
             match line {
                 Line::Label(l) => {
-                    state.label = l;
                     if !state.body.is_empty() {
-                        state.finish(Continuation::Jmp(state.label.clone()));
+                        state.finish(Continuation::Jmp(l.clone()));
                     }
+                    state.label = l;
                 }
                 Line::Assert(a) => {
                     if state.body.is_empty() {
@@ -123,6 +123,7 @@ impl TryInto<super::Module> for crate::ast::Module {
             }
         }
         Ok(super::ast::Module {
+            start: "@0".to_owned(),
             blocks: state.blocks,
         })
     }
