@@ -83,6 +83,7 @@ impl TryInto<super::Module> for crate::ast::Module {
                 Line::Assert(a) => {
                     if state.body.is_empty() {
                         state.pre_assert = match state.pre_assert {
+                            // TODO: Normal or asymmetric conjugation?
                             Some(pa) => Some(Formula::Bin(FBinOp::AndAsym, Box::new((pa, a)))),
                             None => Some(a),
                         };
