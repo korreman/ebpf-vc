@@ -338,7 +338,6 @@ fn jump_instructions() {
     parses(instr, "jslt r0 0 l", Instr::Jcc(Cc::Slt, Reg::R0, RegImm::Imm(0), "l".to_owned()));
     parses(instr, "jsle r0 0 l", Instr::Jcc(Cc::Sle, Reg::R0, RegImm::Imm(0), "l".to_owned()));
 
-    rejects(instr, "jeq r0 0 l");
     rejects(instr, "jeq 0 r1 l");
 }
 
@@ -467,6 +466,7 @@ fn gcd() {
             Line::Label("submit".to_owned()),
             Line::Instr(Instr::Jcc(Cc::Gt, Reg::R0, RegImm::Reg(Reg::R6), "skip".to_owned())),
             Line::Instr(Instr::Binary(WordSize::B64, BinAlu::Mov, Reg::R0, RegImm::Reg(Reg::R6))),
+            Line::Label("skip".to_owned()),
             Line::Instr(Instr::Binary(WordSize::B64, BinAlu::Mov, Reg::R6, RegImm::Imm(0))),
             Line::Instr(Instr::Jcc(Cc::Eq, Reg::R3, RegImm::Reg(Reg::R2), "end".to_owned())),
             Line::Instr(Instr::Jmp("outer".to_owned())),

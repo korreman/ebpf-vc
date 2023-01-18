@@ -195,13 +195,21 @@ fn jcc(i: &str) -> Res<Instr> {
         value(Cc::Sle, tag("sle")),
     ));
     map(
-        instr!(preceded(char('j'), cc), reg, reg_imm, label),
+        instr!(
+            preceded(char('j'), cc),
+            reg,
+            reg_imm,
+            ident.map(|id| id.to_owned())
+        ),
         |(cc, lhs, rhs, target)| Instr::Jcc(cc, lhs, rhs, target),
     )(i)
 }
 
 fn instr(i: &str) -> Res<Instr> {
-    let jmp = map(preceded(pair(tag("ja"), space1), label), Instr::Jmp);
+    let jmp = map(
+        preceded(pair(tag("ja"), space1), ident.map(|id| id.to_owned())),
+        Instr::Jmp,
+    );
     let call = map(preceded(pair(tag("call"), space1), imm), Instr::Call);
     let load_imm = map(instr!(tag("lddw"), reg, imm), |(_, reg, imm)| {
         Instr::LoadImm(reg, imm)
