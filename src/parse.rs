@@ -237,10 +237,10 @@ fn expr(i: &str) -> Res<Expr> {
     .map(|(op, (a, _, _, _, b))| Expr::Binary(op, Box::new((a, b))));
 
     alt((
-        ident.map(|id| Expr::Var(id.to_owned())),
-        imm.map(Expr::Val),
         binary,
         unary,
+        imm.map(Expr::Val),
+        ident.map(|id| Expr::Var(id.to_owned())),
     ))(i)
 }
 

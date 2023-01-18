@@ -1,16 +1,16 @@
 use std::fmt::Debug;
 
-use crate::logic;
 
 use super::*;
 use nom::{combinator::eof, error::ParseError, sequence::terminated};
 
-fn accepts<'a, T, E: ParseError<&'a str>>(parser: impl Parser<&'a str, T, E>, input: &'a str) {
-    if terminated(parser, eof).parse(input).is_err() {
+fn accepts<'a, T, E: Debug + ParseError<&'a str>>
+    (parser: impl Parser<&'a str, T, E>, input: &'a str) {
+    if let Err(e) = terminated(parser, eof).parse(input) {
         if input.len() > 32 && input.contains('\n') {
-            panic!("rejects:\n\n{input}\n")
+            panic!("rejects:\n\n{input}\n\nerror: {e:?}")
         } else {
-            panic!("rejects: {input:?}")
+            panic!("rejects: {input:?}\nerror: {e:?}")
         }
     }
 }
@@ -21,7 +21,7 @@ fn rejects<'a, T, E: ParseError<&'a str>>(parser: impl Parser<&'a str, T, E>, in
     }
 }
 
-fn parses<'a, T: Eq + Debug, E: ParseError<&'a str>>(
+fn parses<'a, T: Eq + Debug, E: Debug + ParseError<&'a str>>(
     parser: impl Parser<&'a str, T, E>,
     input: &'a str,
     expected: T,
@@ -32,7 +32,7 @@ fn parses<'a, T: Eq + Debug, E: ParseError<&'a str>>(
                 panic!("\nexpected: {expected:?}\n  actual: {res:?}");
             }
         }
-        Err(_) => panic!("rejected: {input:?}"),
+        Err(e) => panic!("rejects: {input:?}\nerror: {e:?}"),
     }
 }
 
@@ -407,7 +407,18 @@ fn formulas() {
     parses(formula, "x < y", f.rel(Cc::Lt, x.clone(), y.clone()));
     parses(formula, "x <= y", f.rel(Cc::Le, x.clone(), y.clone()));
 
-    parses(formula, "x <= mov(y, z)", f.rel(Cc::Le, x.clone(), f.binop(BinAlu::Mov, y.clone(), z.clone())));
+    parses(
+        formula, "x <= sub(y, z)",
+        f.rel(Cc::Le, x.clone(), f.binop(BinAlu::Sub, y.clone(), z.clone()))
+    );
+    parses(
+        formula, "sub(x, y) >= add(mov(neg(x), z), y)",
+        f.rel(
+            Cc::Ge,
+            f.binop(BinAlu::Sub, x.clone(), y.clone()),
+            f.binop(BinAlu::Add, f.binop(BinAlu::Mov, f.unop(UnAlu::Neg, x.clone()), z.clone()), y.clone())
+        )
+    );
 }
 
 #[test]
