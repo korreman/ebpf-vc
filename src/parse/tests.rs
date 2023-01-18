@@ -1,5 +1,7 @@
 use std::fmt::Debug;
 
+use crate::logic;
+
 use super::*;
 use nom::{combinator::eof, error::ParseError, sequence::terminated};
 
@@ -388,9 +390,35 @@ fn labels() {
     rejects(label, "some_identifier");
     rejects(label, "some identifiers");
 }
+
+#[test]
+fn formulas() {
+    let f = crate::logic::FormulaBuilder::new();
+    parses(formula, "true", f.top());
+    parses(formula, "false", f.bot());
+
+    let x = f.var_ident("x".to_owned());
+    let y = f.var_ident("y".to_owned());
+    let z = f.var_ident("z".to_owned());
+    parses(formula, "x = y", f.rel(Cc::Eq, x.clone(), y.clone()));
+    parses(formula, "x <> y", f.rel(Cc::Ne, x.clone(), y.clone()));
+    parses(formula, "x > y", f.rel(Cc::Gt, x.clone(), y.clone()));
+    parses(formula, "x >= y", f.rel(Cc::Ge, x.clone(), y.clone()));
+    parses(formula, "x < y", f.rel(Cc::Lt, x.clone(), y.clone()));
+    parses(formula, "x <= y", f.rel(Cc::Le, x.clone(), y.clone()));
+
+    parses(formula, "x <= mov(y, z)", f.rel(Cc::Le, x.clone(), f.binop(BinAlu::Mov, y.clone(), z.clone())));
+}
+
 #[test]
 fn assertions() {
-    parses(assertion, ";# assert true", Formula::Val(true))
+    let f = crate::logic::FormulaBuilder::new();
+    parses(assertion, ";# assert true", f.top());
+    parses(assertion, ";# assert false", f.bot());
+
+    let x = f.var_ident("x".to_owned());
+    let y = f.var_ident("y".to_owned());
+    parses(assertion, ";# assert x <> y", f.rel(Cc::Ne, x, y));
 }
 
 #[test]

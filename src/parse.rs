@@ -228,19 +228,20 @@ fn parens<'a, T>(p: impl FnMut(&'a str) -> Res<'a, T>) -> impl FnMut(&'a str) ->
     )
 }
 
-fn reg_ident(i: &str) -> Res<Ident> {
-    map(reg, |r| format!("r{}", r.get()))(i)
-}
-
 fn expr(i: &str) -> Res<Expr> {
     let unary = tuple((un_alu, parens(expr))).map(|(op, inner)| Expr::Unary(op, Box::new(inner)));
     let binary = tuple((
-        bin_alu,
+        terminated(bin_alu, space0),
         parens(tuple((expr, space0, char(','), space0, expr))),
     ))
     .map(|(op, (a, _, _, _, b))| Expr::Binary(op, Box::new((a, b))));
 
-    alt((reg_ident.map(Expr::Var), imm.map(Expr::Val), unary, binary))(i)
+    alt((
+        ident.map(|id| Expr::Var(id.to_owned())),
+        imm.map(Expr::Val),
+        binary,
+        unary,
+    ))(i)
 }
 
 fn formula(i: &str) -> Res<Formula> {
@@ -279,10 +280,10 @@ fn formula(i: &str) -> Res<Formula> {
     let rel_op = alt((
         value(Cc::Eq, tag("=")),
         value(Cc::Ne, tag("<>")),
-        value(Cc::Gt, tag(">")),
-        value(Cc::Lt, tag("<")),
         value(Cc::Ge, tag(">=")),
         value(Cc::Le, tag("<=")),
+        value(Cc::Lt, tag("<")),
+        value(Cc::Gt, tag(">")),
         // TODO: signed comparisons and 'set'
     ));
 

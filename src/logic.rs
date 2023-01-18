@@ -190,6 +190,11 @@ impl FormulaBuilder {
         (Expr::Var(ident.clone()), ident)
     }
 
+    /// Generate a non-unique expression representing [ident].
+    pub fn var_ident(&self, ident: Ident) -> Expr {
+        Expr::Var(ident)
+    }
+
     /// Get the variable representing a register.
     pub fn reg(&self, reg: Reg) -> (Expr, Ident) {
         let id = format!("r{}", reg.get());
