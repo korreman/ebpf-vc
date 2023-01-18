@@ -1,8 +1,10 @@
 //! A processed AST, ready for VC-generation.
 //! It currently only supports 64-bit operations.
 
+use std::collections::HashMap;
+
 pub use crate::ast::{BinAlu, Cc, Imm, MemRef, Offset, Reg, RegImm, UnAlu};
-use crate::ast::{Formula, WordSize};
+use crate::ast::{Formula, Label, WordSize};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Instr {
@@ -16,8 +18,7 @@ pub enum Instr {
     Call(Imm),
 }
 
-pub type Label = usize;
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Continuation {
     Exit,
     Jmp(Label),
@@ -33,8 +34,5 @@ pub struct Block {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Module {
-    /// Collection of program blocks.
-    /// These should be arranged as they occur in the code,
-    /// so the 0'th block is the entry-point of the module.
-    pub blocks: Vec<Block>,
+    pub blocks: HashMap<Label, Block>,
 }

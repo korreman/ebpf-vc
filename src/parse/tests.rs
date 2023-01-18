@@ -323,32 +323,23 @@ fn store_instructions() {
 
 #[test]
 fn jump_instructions() {
-    parses(instr, "ja label", Instr::Jmp(JmpTarget::Label("label".to_owned())));
-    parses(instr, "ja + 8", Instr::Jmp(JmpTarget::Offset(8)));
-    parses(instr, "ja - 7", Instr::Jmp(JmpTarget::Offset(-7)));
+    parses(instr, "ja label", Instr::Jmp("label".to_owned()));
+    parses(instr, "jeq r0 0 l", Instr::Jcc(Cc::Eq, Reg::R0, RegImm::Imm(0), "l".to_owned()));
+    parses(instr, "jeq r0 r1 l", Instr::Jcc(Cc::Eq, Reg::R0, RegImm::Reg(Reg::R1), "l".to_owned()));
 
-    parses(instr, "jeq r0 0 +1", Instr::Jcc(Cc::Eq, Reg::R0, RegImm::Imm(0), JmpTarget::Offset(1)));
-    parses(instr, "jeq r0 r1 +1", Instr::Jcc(Cc::Eq, Reg::R0, RegImm::Reg(Reg::R1), JmpTarget::Offset(1)));
-    parses(instr, "jeq r0 0 -0x80", Instr::Jcc(Cc::Eq, Reg::R0, RegImm::Imm(0), JmpTarget::Offset(-0x80)));
-    parses(instr, "jeq r0 r1 -0b1001", Instr::Jcc(Cc::Eq, Reg::R0, RegImm::Reg(Reg::R1), JmpTarget::Offset(-0b1001)));
-    parses(instr, "jeq r0 0 l", Instr::Jcc(Cc::Eq, Reg::R0, RegImm::Imm(0), JmpTarget::Label("l".to_owned())));
-    parses(instr, "jeq r0 r1 l", Instr::Jcc(Cc::Eq, Reg::R0, RegImm::Reg(Reg::R1), JmpTarget::Label("l".to_owned())));
+    parses(instr, "jgt r0 0 l", Instr::Jcc(Cc::Gt, Reg::R0, RegImm::Imm(0), "l".to_owned()));
+    parses(instr, "jge r0 0 l", Instr::Jcc(Cc::Ge, Reg::R0, RegImm::Imm(0), "l".to_owned()));
+    parses(instr, "jlt r0 0 l", Instr::Jcc(Cc::Lt, Reg::R0, RegImm::Imm(0), "l".to_owned()));
+    parses(instr, "jle r0 0 l", Instr::Jcc(Cc::Le, Reg::R0, RegImm::Imm(0), "l".to_owned()));
+    parses(instr, "jset r0 0 l", Instr::Jcc(Cc::Set, Reg::R0, RegImm::Imm(0), "l".to_owned()));
+    parses(instr, "jne r0 0 l", Instr::Jcc(Cc::Ne, Reg::R0, RegImm::Imm(0), "l".to_owned()));
+    parses(instr, "jsgt r0 0 l", Instr::Jcc(Cc::Sgt, Reg::R0, RegImm::Imm(0), "l".to_owned()));
+    parses(instr, "jsge r0 0 l", Instr::Jcc(Cc::Sge, Reg::R0, RegImm::Imm(0), "l".to_owned()));
+    parses(instr, "jslt r0 0 l", Instr::Jcc(Cc::Slt, Reg::R0, RegImm::Imm(0), "l".to_owned()));
+    parses(instr, "jsle r0 0 l", Instr::Jcc(Cc::Sle, Reg::R0, RegImm::Imm(0), "l".to_owned()));
 
-    parses(instr, "jgt r0 0 +1", Instr::Jcc(Cc::Gt, Reg::R0, RegImm::Imm(0), JmpTarget::Offset(1)));
-    parses(instr, "jge r0 0 +1", Instr::Jcc(Cc::Ge, Reg::R0, RegImm::Imm(0), JmpTarget::Offset(1)));
-    parses(instr, "jlt r0 0 +1", Instr::Jcc(Cc::Lt, Reg::R0, RegImm::Imm(0), JmpTarget::Offset(1)));
-    parses(instr, "jle r0 0 +1", Instr::Jcc(Cc::Le, Reg::R0, RegImm::Imm(0), JmpTarget::Offset(1)));
-    parses(instr, "jset r0 0 +1", Instr::Jcc(Cc::Set, Reg::R0, RegImm::Imm(0), JmpTarget::Offset(1)));
-    parses(instr, "jne r0 0 +1", Instr::Jcc(Cc::Ne, Reg::R0, RegImm::Imm(0), JmpTarget::Offset(1)));
-    parses(instr, "jsgt r0 0 +1", Instr::Jcc(Cc::Sgt, Reg::R0, RegImm::Imm(0), JmpTarget::Offset(1)));
-    parses(instr, "jsge r0 0 +1", Instr::Jcc(Cc::Sge, Reg::R0, RegImm::Imm(0), JmpTarget::Offset(1)));
-    parses(instr, "jslt r0 0 +1", Instr::Jcc(Cc::Slt, Reg::R0, RegImm::Imm(0), JmpTarget::Offset(1)));
-    parses(instr, "jsle r0 0 +1", Instr::Jcc(Cc::Sle, Reg::R0, RegImm::Imm(0), JmpTarget::Offset(1)));
-
-    rejects(instr, "ja 8");
-    rejects(instr, "jeq r0 0 8");
-    rejects(instr, "jeq r0 r1 8");
-    rejects(instr, "jeq 0 r1 8");
+    rejects(instr, "jeq r0 0 l");
+    rejects(instr, "jeq 0 r1 l");
 }
 
 #[test]
@@ -439,8 +430,9 @@ fn gcd() {
                 ja outer
 
             submit: ;; finishes an elf. compare to current max and replace if better, reset elf to 0
-                jgt r0 r6 +1
+                jgt r0 r6 skip
                 mov r0 r6
+            skip:
                 mov r6 0
                 jeq r3 r2 end
                 ja outer
@@ -454,12 +446,12 @@ fn gcd() {
             Line::Instr(Instr::Binary(WordSize::B64, BinAlu::Mov, Reg::R5, RegImm::Imm(0))),
             Line::Instr(Instr::Binary(WordSize::B64, BinAlu::Mov, Reg::R6, RegImm::Imm(0))),
             Line::Label("outer".to_owned()),
-            Line::Instr(Instr::Jcc(Cc::Eq, Reg::R3, RegImm::Reg(Reg::R2), JmpTarget::Label("submit".to_owned()))),
+            Line::Instr(Instr::Jcc(Cc::Eq, Reg::R3, RegImm::Reg(Reg::R2), "submit".to_owned())),
             Line::Instr(Instr::Binary(WordSize::B64, BinAlu::Mov, Reg::R4, RegImm::Reg(Reg::R1))),
             Line::Instr(Instr::Binary(WordSize::B64, BinAlu::Add, Reg::R4, RegImm::Reg(Reg::R3))),
             Line::Instr(Instr::Load(WordSize::B8, Reg::R4, MemRef(Reg::R4, None))),
             Line::Instr(Instr::Binary(WordSize::B64, BinAlu::Add, Reg::R3, RegImm::Imm(1))),
-            Line::Instr(Instr::Jcc(Cc::Eq, Reg::R4, RegImm::Imm(10), JmpTarget::Label("submit".to_owned()))),
+            Line::Instr(Instr::Jcc(Cc::Eq, Reg::R4, RegImm::Imm(10), "submit".to_owned())),
             Line::Label("inner".to_owned()),
             Line::Instr(Instr::Binary(WordSize::B64, BinAlu::Mul, Reg::R5, RegImm::Imm(10))),
             Line::Instr(Instr::Binary(WordSize::B64, BinAlu::Add, Reg::R5, RegImm::Reg(Reg::R4))),
@@ -468,16 +460,16 @@ fn gcd() {
             Line::Instr(Instr::Binary(WordSize::B64, BinAlu::Add, Reg::R4, RegImm::Reg(Reg::R3))),
             Line::Instr(Instr::Load(WordSize::B8, Reg::R4, MemRef(Reg::R4, None))),
             Line::Instr(Instr::Binary(WordSize::B64, BinAlu::Add, Reg::R3, RegImm::Imm(1))),
-            Line::Instr(Instr::Jcc(Cc::Ne, Reg::R4, RegImm::Imm(10), JmpTarget::Label("inner".to_owned()))),
+            Line::Instr(Instr::Jcc(Cc::Ne, Reg::R4, RegImm::Imm(10), "inner".to_owned())),
             Line::Instr(Instr::Binary(WordSize::B64, BinAlu::Add, Reg::R6, RegImm::Reg(Reg::R5))),
             Line::Instr(Instr::Binary(WordSize::B64, BinAlu::Mov, Reg::R5, RegImm::Imm(0))),
-            Line::Instr(Instr::Jmp(JmpTarget::Label("outer".to_owned()))),
+            Line::Instr(Instr::Jmp("outer".to_owned())),
             Line::Label("submit".to_owned()),
-            Line::Instr(Instr::Jcc(Cc::Gt, Reg::R0, RegImm::Reg(Reg::R6), JmpTarget::Offset(1))),
+            Line::Instr(Instr::Jcc(Cc::Gt, Reg::R0, RegImm::Reg(Reg::R6), "skip".to_owned())),
             Line::Instr(Instr::Binary(WordSize::B64, BinAlu::Mov, Reg::R0, RegImm::Reg(Reg::R6))),
             Line::Instr(Instr::Binary(WordSize::B64, BinAlu::Mov, Reg::R6, RegImm::Imm(0))),
-            Line::Instr(Instr::Jcc(Cc::Eq, Reg::R3, RegImm::Reg(Reg::R2), JmpTarget::Label("end".to_owned()))),
-            Line::Instr(Instr::Jmp(JmpTarget::Label("outer".to_owned()))),
+            Line::Instr(Instr::Jcc(Cc::Eq, Reg::R3, RegImm::Reg(Reg::R2), "end".to_owned())),
+            Line::Instr(Instr::Jmp("outer".to_owned())),
             Line::Label("end".to_owned()),
             Line::Instr(Instr::Exit),
         ],

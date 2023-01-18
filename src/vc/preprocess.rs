@@ -1,6 +1,7 @@
-use crate::ast::{Instr, JmpTarget, Label, Line};
-use itertools::Itertools;
-use std::collections::HashMap;
+use crate::ast::{FBinOp, Formula, Instr, Label, Line};
+use std::{collections::HashMap, mem::swap};
+
+use super::ast::{Block, Continuation};
 
 pub enum ConvertErr {
     JumpBounds { target: usize, bound: usize },
@@ -24,136 +25,104 @@ impl std::fmt::Display for ConvertErr {
     }
 }
 
+struct State {
+    blocks: HashMap<Label, Block>,
+    label_counter: usize,
+    label: String,
+    pre_assert: Option<Formula>,
+    body: Vec<super::Instr>,
+}
+
+impl State {
+    fn new() -> Self {
+        Self {
+            blocks: HashMap::new(),
+            label: "@0".to_owned(),
+            label_counter: 0,
+            pre_assert: None,
+            body: Vec::new(),
+        }
+    }
+
+    fn finish(&mut self, next: Continuation) {
+        let mut label = "".to_owned();
+        let mut pre_assert = None;
+        let mut body = Vec::new();
+        swap(&mut self.label, &mut label);
+        swap(&mut self.pre_assert, &mut pre_assert);
+        swap(&mut self.body, &mut body);
+        self.blocks.insert(
+            label,
+            Block {
+                pre_assert,
+                body,
+                next,
+            },
+        );
+    }
+
+    fn next_label(&mut self) -> Label {
+        self.label_counter += 1;
+        format!("@{}", self.label_counter)
+    }
+}
+
 impl TryInto<super::Module> for crate::ast::Module {
     type Error = ConvertErr;
 
-    fn try_into(mut self) -> Result<crate::vc::ast::Module, Self::Error> {
-        let mut jump_targets: Vec<usize> = vec![0];
-        let mut labels: HashMap<Label, usize> = HashMap::new();
-
-        // Collect labels and targets of jumps to use as split indices.
-        // Filter out the labels at the same time.
-        let mut counter = 0;
-        self.retain(|line| match line {
-            Line::Label(l) => {
-                jump_targets.push(counter);
-                labels.insert(l.clone(), counter);
-                false
-            }
-            Line::Instr(i) => {
-                match i {
-                    Instr::Jmp(JmpTarget::Offset(o)) => {
-                        jump_targets.push((counter as i64 + o) as usize + 1)
+    fn try_into(self) -> Result<crate::vc::ast::Module, Self::Error> {
+        let mut state = State::new();
+        for line in self {
+            match line {
+                Line::Label(l) => {
+                    state.label = l;
+                    if !state.body.is_empty() {
+                        state.finish(Continuation::Jmp(state.label.clone()));
                     }
-                    Instr::Jcc(_, _, _, target) => {
-                        jump_targets.push(counter + 1);
-                        if let JmpTarget::Offset(o) = target {
-                            jump_targets.push((counter as i64 + o) as usize + 1)
-                        }
+                }
+                Line::Assert(a) => {
+                    if state.body.is_empty() {
+                        state.pre_assert = match state.pre_assert {
+                            Some(pa) => Some(Formula::Bin(FBinOp::AndAsym, Box::new((pa, a)))),
+                            None => Some(a),
+                        };
+                    } else {
+                        state.body.push(super::Instr::Assert(a))
                     }
-                    Instr::Exit => jump_targets.push(counter + 1),
-                    _ => (),
                 }
-                counter += 1;
-                true
+                Line::Instr(i) => match i {
+                    // Simple conversions
+                    Instr::Unary(s, o, r) => state.body.push(super::Instr::Unary(s, o, r)),
+                    Instr::Binary(s, o, d, ri) => {
+                        state.body.push(super::Instr::Binary(s, o, d, ri))
+                    }
+                    Instr::Store(s, m, ri) => state.body.push(super::Instr::Store(s, m, ri)),
+                    Instr::Load(s, d, m) => state.body.push(super::Instr::Load(s, d, m)),
+                    Instr::LoadImm(r, i) => state.body.push(super::Instr::LoadImm(r, i)),
+                    Instr::LoadMapFd(r, i) => state.body.push(super::Instr::LoadMapFd(r, i)),
+                    Instr::Call(i) => state.body.push(super::Instr::Call(i)),
+                    // End of blocks
+                    Instr::Jmp(t) => {
+                        state.finish(Continuation::Jmp(t));
+                        state.label = state.next_label()
+                    }
+                    Instr::Jcc(cc, reg, reg_imm, target) => {
+                        let next_label = state.next_label();
+                        state.finish(Continuation::Jcc(
+                            cc,
+                            reg,
+                            reg_imm,
+                            target,
+                            next_label.clone(),
+                        ));
+                        state.label = next_label;
+                    }
+                    Instr::Exit => state.finish(Continuation::Exit),
+                },
             }
-            Line::Assert(_) => todo!(),
-        });
-        jump_targets.push(self.len() - 1);
-        jump_targets.sort();
-        jump_targets.dedup();
-
-        // Verify that all jump targets (including offsets) are within program limits.
-        let highest_target = *jump_targets.last().unwrap();
-        if highest_target > self.len() {
-            return Err(ConvertErr::JumpBounds {
-                target: highest_target,
-                bound: self.len(),
-            });
         }
-
-        // Generate tables mapping from line indices to block indices.
-        let mut idx_map = HashMap::new();
-        for (new_idx, &old_idx) in jump_targets.iter().enumerate() {
-            idx_map.insert(old_idx, new_idx);
-        }
-
-        // Make labels point to the new block indices instead of line indices.
-        for idx in labels.values_mut() {
-            *idx = idx_map[idx];
-        }
-
-        // Helper closure that converts jump targets to block indices.
-        let get_target = |target: &JmpTarget, next| {
-            let res = match target {
-                JmpTarget::Label(l) => labels.get(l).ok_or(ConvertErr::NoLabel(l.clone())),
-                JmpTarget::Offset(o) => Ok(&idx_map[&((next as i64 + *o) as usize)]),
-            };
-            res.cloned()
-        };
-
-        // Slice the vector into blocks according to these jump targets.
-        // Take each slice and package up as a block.
-        // - Convert instructions to limited subset.
-        // - Resolve jump targets to block indices
-        // - If a block doesn't end with a jump or exit, create a jump to the succeeding block.
-        let blocks: Result<Vec<super::Block>, ConvertErr> = jump_targets
-            .iter()
-            .tuple_windows()
-            .map(|(&idx, &next)| -> Result<super::Block, ConvertErr> {
-                let mut slice = &self[idx..next];
-
-                // Generate the appropriate continuation for the block.
-                let mut last_is_not_cont = false;
-                let next = match slice.last().expect("no slices") {
-                    Line::Instr(i) => match i {
-                        Instr::Jmp(t) => super::Continuation::Jmp(get_target(t, next)?),
-                        Instr::Jcc(cc, reg, reg_imm, target) => {
-                            let target_t = get_target(target, next)?;
-                            let target_f = get_target(&JmpTarget::Offset(0), next)?;
-                            super::Continuation::Jcc(*cc, *reg, *reg_imm, target_t, target_f)
-                        }
-                        Instr::Exit => super::Continuation::Exit,
-                        _ => {
-                            last_is_not_cont = true;
-                            super::Continuation::Jmp(get_target(&JmpTarget::Offset(0), next)?)
-                        }
-                    },
-                    Line::Label(_) => panic!("labels should've been filtered by now"),
-                    Line::Assert(_) => todo!(),
-                };
-
-                // Remove the last instruction from the body if it's a continuation.
-                if !last_is_not_cont {
-                    slice = &slice[..slice.len() - 1];
-                }
-
-                // Convert the body to constrained instruction set.
-                let body: Vec<super::Instr> = slice
-                    .iter()
-                    .map(|l| match l {
-                        Line::Instr(i) => match i {
-                            Instr::Unary(s, o, r) => super::Instr::Unary(*s, *o, *r),
-                            Instr::Binary(s, o, d, ri) => super::Instr::Binary(*s, *o, *d, *ri),
-                            Instr::Store(s, m, ri) => super::Instr::Store(*s, *m, *ri),
-                            Instr::Load(s, d, m) => super::Instr::Load(*s, *d, *m),
-                            Instr::LoadImm(r, i) => super::Instr::LoadImm(*r, *i),
-                            Instr::LoadMapFd(r, i) => super::Instr::LoadMapFd(*r, *i),
-                            Instr::Call(i) => super::Instr::Call(*i),
-                            instr => panic!("no case for {instr:?}"),
-                        },
-                        Line::Label(_) => panic!("labels should've been filtered by now"),
-                        Line::Assert(_) => todo!(),
-                    })
-                    .collect();
-
-                Ok(super::Block {
-                    pre_assert: None,
-                    body,
-                    next,
-                })
-            })
-            .collect();
-        Ok(super::Module { blocks: blocks? })
+        Ok(super::ast::Module {
+            blocks: state.blocks,
+        })
     }
 }

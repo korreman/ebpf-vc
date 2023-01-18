@@ -66,12 +66,6 @@ pub type Label = String;
 pub struct MemRef(pub Reg, pub Option<Offset>);
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum JmpTarget {
-    Label(Label),
-    Offset(Offset),
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Instr {
     Unary(WordSize, UnAlu, Reg),
     Binary(WordSize, BinAlu, Reg, RegImm),
@@ -79,8 +73,8 @@ pub enum Instr {
     Load(WordSize, Reg, MemRef),
     LoadImm(Reg, Imm),
     LoadMapFd(Reg, Imm),
-    Jmp(JmpTarget),
-    Jcc(Cc, Reg, RegImm, JmpTarget),
+    Jmp(Label),
+    Jcc(Cc, Reg, RegImm, Label),
     Call(Imm),
     Exit,
 }

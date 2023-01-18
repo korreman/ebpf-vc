@@ -1,16 +1,17 @@
 //! Verification condition generation.
 mod preprocess;
+use std::collections::HashMap;
+
 pub use preprocess::*;
 
 pub mod ast;
 use crate::{
-    ast::{Formula, WordSize},
+    ast::{Formula, Label, WordSize},
     logic::*,
 };
 use ast::*;
 
 enum BlockStatus {
-    Untouched,
     Pending,
     PreCond(Formula),
 }
@@ -21,75 +22,71 @@ pub fn vc(module: Module) -> Option<Vec<Formula>> {
 
     // Stores cached pre-conditions for each block.
     // Also used to track which blocks have already been visited.
-    let mut pre_conds: Vec<_> = module
-        .blocks
-        .iter()
-        .map(|_| BlockStatus::Untouched)
-        .collect();
+    let mut pre_conds: HashMap<Label, BlockStatus> = HashMap::new();
 
     // Perform a reverse breadth-first traversal of CFG.
-    let mut stack = vec![0];
+    let mut stack = vec!["@0".to_owned()];
     let mut f = FormulaBuilder::new();
     while let Some(label) = stack.pop() {
-        let block = &module.blocks[label];
-        pre_conds[label] = BlockStatus::Pending;
+        let block = &module.blocks[&label];
+        pre_conds.insert(label.clone(), BlockStatus::Pending); // TODO: wont this overwrite results?
 
         // Generate post-condition from continuation.
         // TODO: Generalize retrieval of post-conditions.
-        let post_cond = match block.next {
+        let post_cond = match &block.next {
             Continuation::Exit => f.top(),
-            Continuation::Jmp(target) => match &pre_conds[target] {
-                BlockStatus::PreCond(c) => c.clone(),
-                BlockStatus::Untouched => {
-                    stack.push(label);
-                    stack.push(target);
-                    continue;
-                }
-                BlockStatus::Pending => {
+            Continuation::Jmp(target) => match &pre_conds.get(target) {
+                Some(BlockStatus::PreCond(c)) => c.clone(),
+                Some(BlockStatus::Pending) => {
                     if let Some(c) = &module.blocks[target].pre_assert {
                         c.clone()
                     } else {
                         return None;
                     }
                 }
+                None => {
+                    stack.push(label);
+                    stack.push(target.clone());
+                    continue;
+                }
             },
             Continuation::Jcc(cc, lhs, rhs, target_t, target_f) => {
-                let cond_t = match &pre_conds[target_t] {
-                    BlockStatus::PreCond(c) => c.clone(),
-                    BlockStatus::Untouched => {
-                        stack.push(label);
-                        stack.push(target_t);
-                        continue;
-                    }
-                    BlockStatus::Pending => {
+                let cond_t = match &pre_conds.get(target_t) {
+                    Some(BlockStatus::PreCond(c)) => c.clone(),
+                    Some(BlockStatus::Pending) => {
                         if let Some(c) = &module.blocks[target_t].pre_assert {
                             c.clone()
                         } else {
                             return None;
                         }
                     }
-                };
-                let cond_f = match &pre_conds[target_f] {
-                    BlockStatus::PreCond(c) => c.clone(),
-                    BlockStatus::Untouched => {
+                    None => {
                         stack.push(label);
-                        stack.push(target_f);
+                        stack.push(target_t.clone());
                         continue;
                     }
-                    BlockStatus::Pending => {
+                };
+                let cond_f = match &pre_conds.get(target_f) {
+                    Some(BlockStatus::PreCond(c)) => c.clone(),
+                    Some(BlockStatus::Pending) => {
                         if let Some(c) = &module.blocks[target_f].pre_assert {
                             c.clone()
                         } else {
                             return None;
                         }
                     }
+                    None => {
+                        stack.push(label);
+                        stack.push(target_f.clone());
+                        continue;
+                    }
                 };
-                let lhs = f.reg(lhs).0;
+                let lhs = f.reg(*lhs).0;
                 let rhs = match rhs {
-                    RegImm::Reg(r) => f.reg(r).0,
-                    RegImm::Imm(i) => f.val(i),
+                    RegImm::Reg(r) => f.reg(*r).0,
+                    RegImm::Imm(i) => f.val(*i),
                 };
-                let cc = f.rel(cc, lhs, rhs);
+                let cc = f.rel(*cc, lhs, rhs);
                 f.or(
                     f.and(cc.clone(), cond_t.clone()),
                     f.and(f.not(cc), cond_f.clone()),
@@ -105,15 +102,15 @@ pub fn vc(module: Module) -> Option<Vec<Formula>> {
             // If the block has a pre-assertion,
             // add a VC requiring that the pre-assertion implies the WP result.
             verif_conds.push(f.implies(pre_assert.clone(), wp_result));
-            pre_conds[label] = BlockStatus::PreCond(pre_assert.clone());
+            pre_conds.insert(label, BlockStatus::PreCond(pre_assert.clone()));
         } else {
             // Otherwise, cache the WP result for the block.
-            pre_conds[label] = BlockStatus::PreCond(wp_result);
+            pre_conds.insert(label, BlockStatus::PreCond(wp_result));
         }
     }
 
     // Add the pre-condition of the starting block as a VC.
-    verif_conds.push(match &pre_conds[0] {
+    verif_conds.push(match &pre_conds["@0"] {
         BlockStatus::PreCond(c) => c.clone(),
         _ => panic!("starting block never resolved"),
     });

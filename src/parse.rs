@@ -180,13 +180,6 @@ fn store(i: &str) -> Res<Instr> {
     .parse(i)
 }
 
-fn jmp_target(i: &str) -> Res<JmpTarget> {
-    alt((
-        map(ident, |l| JmpTarget::Label(l.to_owned())),
-        map(offset, JmpTarget::Offset),
-    ))(i)
-}
-
 fn jcc(i: &str) -> Res<Instr> {
     let cc = alt((
         value(Cc::Eq, tag("eq")),
@@ -202,13 +195,13 @@ fn jcc(i: &str) -> Res<Instr> {
         value(Cc::Sle, tag("sle")),
     ));
     map(
-        instr!(preceded(char('j'), cc), reg, reg_imm, jmp_target),
+        instr!(preceded(char('j'), cc), reg, reg_imm, label),
         |(cc, lhs, rhs, target)| Instr::Jcc(cc, lhs, rhs, target),
     )(i)
 }
 
 fn instr(i: &str) -> Res<Instr> {
-    let jmp = map(preceded(pair(tag("ja"), space1), jmp_target), Instr::Jmp);
+    let jmp = map(preceded(pair(tag("ja"), space1), label), Instr::Jmp);
     let call = map(preceded(pair(tag("call"), space1), imm), Instr::Call);
     let load_imm = map(instr!(tag("lddw"), reg, imm), |(_, reg, imm)| {
         Instr::LoadImm(reg, imm)
