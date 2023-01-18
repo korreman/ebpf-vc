@@ -3,7 +3,7 @@ use nom::{
     branch::alt,
     bytes::complete::tag,
     character::complete::{alpha1, alphanumeric1, char, newline, one_of, satisfy, space0, space1},
-    combinator::{eof, map, map_opt, map_res, opt, recognize, value, verify},
+    combinator::{eof, map, map_opt, map_res, opt, peek, recognize, value, verify},
     multi::{many0, many0_count, many1, separated_list0},
     sequence::{delimited, pair, preceded, terminated, tuple},
     IResult, Parser,
@@ -293,7 +293,7 @@ fn formula(i: &str) -> Res<Formula> {
 }
 
 fn assertion(i: &str) -> Res<Formula> {
-    preceded(pair(tag("assert"), space0), formula)(i)
+    preceded(tuple((tag(";#"), space0, tag("assert"), space0)), formula)(i)
 }
 
 // Structural parsing
@@ -303,7 +303,10 @@ fn line_sep(i: &str) -> Res<()> {
         (),
         many1(tuple((
             space0,
-            opt(pair(char(';'), many0(satisfy(|c| c != '\n')))),
+            opt(pair(
+                terminated(char(';'), peek(satisfy(|c| c != '#'))),
+                many0(satisfy(|c| c != '\n')),
+            )),
             newline,
             space0,
         ))),

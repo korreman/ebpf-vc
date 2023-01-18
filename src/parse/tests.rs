@@ -358,6 +358,10 @@ fn line_separators() {
     accepts(line_sep, "; comment \n\n ;comment   \n");
 
     rejects(line_sep, "");
+    rejects(line_sep, ";#");
+    rejects(line_sep, ";#some comment");
+    rejects(line_sep, ";# some comment");
+    rejects(line_sep, ";# assert x <> y");
     rejects(line_sep, " ");
     rejects(line_sep, "a\n");
     rejects(line_sep, "a \n");
@@ -383,6 +387,10 @@ fn labels() {
     rejects(label, ":");
     rejects(label, "some_identifier");
     rejects(label, "some identifiers");
+}
+#[test]
+fn assertions() {
+    parses(assertion, ";# assert true", Formula::Val(true))
 }
 
 #[test]
