@@ -64,6 +64,7 @@ impl State {
     }
 
     fn change_label(&mut self, mut l: Label) {
+        // TODO: resolve multiple occurrences of same label
         let value = l.clone();
         swap(&mut self.label, &mut l);
         self.label_aliases.insert(l, value);
@@ -75,11 +76,21 @@ impl State {
     }
 
     fn resolve_aliases(&mut self) {
+        let resolve = |target: &mut Label| {
+            if let Some(l) = self.label_aliases.get(target) {
+                *target = l.clone();
+            }
+        };
         for block in self.blocks.values_mut() {
-            if let Continuation::Jcc(_, _, _, _, target) = &mut block.next {
-                if let Some(l) = self.label_aliases.get(target) {
-                    *target = l.clone();
+            match &mut block.next {
+                Continuation::Jcc(_, _, _, target_t, target_f) => {
+                    resolve(target_t);
+                    resolve(target_f);
                 }
+                Continuation::Jmp(target) => {
+                    resolve(target);
+                }
+                _ => (),
             }
         }
     }
@@ -144,7 +155,11 @@ impl TryInto<super::Module> for crate::ast::Module {
         }
         state.resolve_aliases();
         Ok(super::ast::Module {
-            start: "@0".to_owned(),
+            start: state
+                .label_aliases
+                .get("@0")
+                .unwrap_or(&"@0".to_owned())
+                .to_owned(),
             blocks: state.blocks,
         })
     }

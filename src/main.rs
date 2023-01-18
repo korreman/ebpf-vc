@@ -35,7 +35,7 @@ fn main() -> ExitCode {
             return ExitCode::FAILURE;
         }
     };
-    //println!("{ast:#?}\n");
+    //eprintln!("{ast:#?}\n");
 
     let preprocess_res: Result<Module, ConvertErr> = ast.try_into();
     let processed_ast = match preprocess_res {
@@ -45,7 +45,7 @@ fn main() -> ExitCode {
             return ExitCode::FAILURE;
         }
     };
-    //println!("{processed_ast:#?}\n");
+    //eprintln!("{processed_ast:#?}\n");
 
     let vc_res = vc(processed_ast);
     match vc_res {

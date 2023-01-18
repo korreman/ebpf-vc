@@ -39,7 +39,7 @@ pub fn vc(module: Module) -> Result<Vec<Formula>, VcError> {
     let mut pre_conds: HashMap<Label, BlockStatus> = HashMap::new();
 
     // Perform a reverse breadth-first traversal of CFG.
-    let mut stack = vec![module.start];
+    let mut stack = vec![module.start.clone()];
     let mut f = FormulaBuilder::new();
     while let Some(label) = stack.pop() {
         drop(
@@ -128,7 +128,7 @@ pub fn vc(module: Module) -> Result<Vec<Formula>, VcError> {
     }
 
     // Add the pre-condition of the starting block as a VC.
-    verif_conds.push(match &pre_conds["@0"] {
+    verif_conds.push(match &pre_conds[&module.start] {
         BlockStatus::PreCond(c) => c.clone(),
         _ => panic!("starting block never resolved"),
     });
