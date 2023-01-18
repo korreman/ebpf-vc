@@ -12,6 +12,7 @@ mov r0 0
 mov r3 0
 mov r5 0
 mov r6 0
+
 outer: ;; loop
     jeq r3 r2 submit ;; submit final elf if end of input has been reached
     mov r4 r1 ;; load next byte
@@ -35,8 +36,9 @@ inner: ;; loop. parses a number from a decimal string, terminated by newline
     ja outer
 
 submit: ;; finishes an elf. compare to current max and replace if better, reset elf to 0
-    jgt r0 r6 +1
+    jgt r0 r6 skip
     mov r0 r6
+skip:
     mov r6 0
     jeq r3 r2 end
     ja outer
