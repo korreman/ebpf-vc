@@ -63,7 +63,7 @@ impl std::fmt::Display for Formula {
                 };
                 f.write_fmt(format_args!("({f1} {op_str} {f2})"))
             }
-            Formula::Quant(q, id, form) => f.write_fmt(format_args!("({q} {id}. {form})")),
+            Formula::Quant(q, id, form) => f.write_fmt(format_args!("({q} {id} : uint64 . {form})")),
             Formula::Rel(rel, e1, e2) => {
                 let rel_str = match rel {
                     Cc::Eq => "=",

@@ -106,8 +106,8 @@ pub fn vc(module: Module) -> Result<Vec<Formula>, VcError> {
                 };
                 let cc = f.rel(*cc, lhs, rhs);
                 f.or(
-                    f.and(cc.clone(), cond_t.clone()),
-                    f.and(f.not(cc), cond_f.clone()),
+                    f.asym_and(cc.clone(), cond_t.clone()),
+                    f.asym_and(f.not(cc), cond_f.clone()),
                 )
             }
         };
