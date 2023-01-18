@@ -1,7 +1,6 @@
 ;; Simple Euclids GCD, demonstrating control flow
-
-mov r1, 15
-mov r2, 27
+;; r1 - a
+;; r2 - b
 
 ;; routine
 loop:

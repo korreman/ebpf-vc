@@ -1,6 +1,0 @@
-use mach.int.UInt64
-use int.Int
-use int.ComputerDivision
-
-goal G0: forall r0 r1 r2 r3 r4 r5 r6 r7 r8 r9 : uint64 . (true -> (((r2 = 0) && true) \/ (not ((r2 = 0)) && (forall v3 : uint64 . ((v3 = r1) -> ((r2 <> 0) && (forall v2 : uint64 . ((v2 = mod v3 r2) -> (forall v1 : uint64 . ((v1 = r2) -> (forall v0 : uint64 . ((v0 = v2) -> true))))))))))))
-goal G1: forall r0 r1 r2 r3 r4 r5 r6 r7 r8 r9 : uint64 . true

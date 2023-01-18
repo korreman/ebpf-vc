@@ -25,6 +25,7 @@ impl Display for VcError {
     }
 }
 
+#[derive(PartialEq, Eq)]
 enum BlockStatus {
     Pending,
     PreCond(Formula),
@@ -42,74 +43,64 @@ pub fn vc(module: Module) -> Result<Vec<Formula>, VcError> {
     let mut stack = vec![module.start.clone()];
     let mut f = FormulaBuilder::new();
     while let Some(label) = stack.pop() {
-        drop(
-            pre_conds
-                .entry(label.clone())
-                .or_insert(BlockStatus::Pending),
-        );
+        // Try to mark block as pending.
+        let status = pre_conds
+            .entry(label.clone())
+            .or_insert(BlockStatus::Pending);
+        // Skip block if it has already been processed.
+        if *status != BlockStatus::Pending {
+            continue;
+        }
         let block = &module.blocks[&label];
 
+        let mut get_post_cond = |target: &Label| match &pre_conds.get(target) {
+            // If already processed, return the result.
+            Some(BlockStatus::PreCond(c)) => Ok(Some(c.clone())),
+            // If pending, use the pre-assertion if it exists and fail if it doesn't.
+            Some(BlockStatus::Pending) => {
+                if let Some(c) = &module.blocks[target].pre_assert {
+                    Ok(Some(c.clone()))
+                } else {
+                    Err(VcError::NoPreAssert(target.clone()))
+                }
+            }
+            // If block isn't marked as pending, push it to the stack.
+            None => {
+                stack.push(label.clone());
+                stack.push(target.clone());
+                Ok(None)
+            }
+        };
+
         // Generate post-condition from continuation.
-        // TODO: Generalize retrieval of post-conditions.
         let post_cond = match &block.next {
-            Continuation::Exit => f.top(),
-            Continuation::Jmp(target) => match &pre_conds.get(target) {
-                Some(BlockStatus::PreCond(c)) => c.clone(),
-                Some(BlockStatus::Pending) => {
-                    if let Some(c) = &module.blocks[target].pre_assert {
-                        c.clone()
-                    } else {
-                        return Err(VcError::NoPreAssert(target.clone()));
-                    }
-                }
-                None => {
-                    stack.push(label);
-                    stack.push(target.clone());
-                    continue;
-                }
-            },
+            Continuation::Exit => Some(f.top()),
+            Continuation::Jmp(target) => get_post_cond(target)?,
             Continuation::Jcc(cc, lhs, rhs, target_t, target_f) => {
-                let cond_t = match &pre_conds.get(target_t) {
-                    Some(BlockStatus::PreCond(c)) => c.clone(),
-                    Some(BlockStatus::Pending) => {
-                        if let Some(c) = &module.blocks[target_t].pre_assert {
-                            c.clone()
-                        } else {
-                            return Err(VcError::NoPreAssert(target_t.clone()));
-                        }
-                    }
-                    None => {
-                        stack.push(label);
-                        stack.push(target_t.clone());
-                        continue;
-                    }
-                };
-                let cond_f = match &pre_conds.get(target_f) {
-                    Some(BlockStatus::PreCond(c)) => c.clone(),
-                    Some(BlockStatus::Pending) => {
-                        if let Some(c) = &module.blocks[target_f].pre_assert {
-                            c.clone()
-                        } else {
-                            return Err(VcError::NoPreAssert(target_f.clone()));
-                        }
-                    }
-                    None => {
-                        stack.push(label);
-                        stack.push(target_f.clone());
-                        continue;
-                    }
-                };
+                // First, get post-condition of the two targets.
+                let cond_t = get_post_cond(target_t)?;
+                let cond_f = get_post_cond(target_f)?;
+
+                // Next, build formula for comparison.
                 let lhs = f.reg(*lhs).0;
                 let rhs = match rhs {
                     RegImm::Reg(r) => f.reg(*r).0,
                     RegImm::Imm(i) => f.val(*i),
                 };
                 let cc = f.rel(*cc, lhs, rhs);
-                f.or(
-                    f.asym_and(cc.clone(), cond_t.clone()),
-                    f.asym_and(f.not(cc), cond_f.clone()),
-                )
+
+                // Generate condition as conjugation between the two branches.
+                cond_t.zip(cond_f).map(|(cond_t, cond_f)| {
+                    f.or(
+                        f.asym_and(cc.clone(), cond_t.clone()),
+                        f.asym_and(f.not(cc), cond_f.clone()),
+                    )
+                })
             }
+        };
+        let post_cond = match post_cond {
+            Some(c) => c,
+            None => continue,
         };
 
         // Perform WP-calculus on post-condition with block body.
@@ -130,7 +121,7 @@ pub fn vc(module: Module) -> Result<Vec<Formula>, VcError> {
     // Add the pre-condition of the starting block as a VC.
     verif_conds.push(match &pre_conds[&module.start] {
         BlockStatus::PreCond(c) => c.clone(),
-        _ => panic!("starting block never resolved"),
+        _ => panic!("starting block is never processed"),
     });
     Ok(verif_conds)
 }
@@ -161,7 +152,7 @@ fn wp(f: &mut FormulaBuilder, instrs: &[Instr], mut cond: Formula) -> Formula {
                     f.implies(f.eq(v, e), f.replace(&d_id, &v_id, cond)),
                 );
 
-                // Handle division/modulo by zero.
+                // Add extra conditions for division/modulo by zero.
                 if op == &BinAlu::Div || op == &BinAlu::Mod {
                     cond = f.asym_and(f.rel(Cc::Ne, s, f.val(0)), cond);
                 }

@@ -1,4 +1,6 @@
 ;; Simple Euclids GCD, demonstrating control flow
+;; r1 - a
+;; r2 - b
 
 ;; routine
 loop:
