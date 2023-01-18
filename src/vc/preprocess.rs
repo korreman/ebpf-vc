@@ -27,6 +27,7 @@ impl std::fmt::Display for ConvertErr {
 
 struct State {
     blocks: HashMap<Label, Block>,
+    label_aliases: HashMap<String, String>,
     label_counter: usize,
     label: String,
     pre_assert: Option<Formula>,
@@ -37,6 +38,7 @@ impl State {
     fn new() -> Self {
         Self {
             blocks: HashMap::new(),
+            label_aliases: HashMap::new(),
             label: "@0".to_owned(),
             label_counter: 0,
             pre_assert: None,
@@ -61,9 +63,25 @@ impl State {
         );
     }
 
+    fn change_label(&mut self, mut l: Label) {
+        let value = l.clone();
+        swap(&mut self.label, &mut l);
+        self.label_aliases.insert(l, value);
+    }
+
     fn next_label(&mut self) -> Label {
         self.label_counter += 1;
         format!("@{}", self.label_counter)
+    }
+
+    fn resolve_aliases(&mut self) {
+        for block in self.blocks.values_mut() {
+            if let Continuation::Jcc(_, _, _, _, target) = &mut block.next {
+                if let Some(l) = self.label_aliases.get(target) {
+                    *target = l.clone();
+                }
+            }
+        }
     }
 }
 
@@ -71,6 +89,7 @@ impl TryInto<super::Module> for crate::ast::Module {
     type Error = ConvertErr;
 
     fn try_into(self) -> Result<crate::vc::ast::Module, Self::Error> {
+        // TODO: Jump followed by targets point to wrong internal name.
         let mut state = State::new();
         for line in self {
             match line {
@@ -78,7 +97,7 @@ impl TryInto<super::Module> for crate::ast::Module {
                     if !state.body.is_empty() {
                         state.finish(Continuation::Jmp(l.clone()));
                     }
-                    state.label = l;
+                    state.change_label(l);
                 }
                 Line::Assert(a) => {
                     if state.body.is_empty() {
@@ -105,7 +124,8 @@ impl TryInto<super::Module> for crate::ast::Module {
                     // End of blocks
                     Instr::Jmp(t) => {
                         state.finish(Continuation::Jmp(t));
-                        state.label = state.next_label()
+                        let next_label = state.next_label();
+                        state.change_label(next_label)
                     }
                     Instr::Jcc(cc, reg, reg_imm, target) => {
                         let next_label = state.next_label();
@@ -116,12 +136,13 @@ impl TryInto<super::Module> for crate::ast::Module {
                             target,
                             next_label.clone(),
                         ));
-                        state.label = next_label;
+                        state.change_label(next_label);
                     }
                     Instr::Exit => state.finish(Continuation::Exit),
                 },
             }
         }
+        state.resolve_aliases();
         Ok(super::ast::Module {
             start: "@0".to_owned(),
             blocks: state.blocks,
