@@ -157,6 +157,9 @@ fn wp(f: &mut FormulaBuilder, instrs: &[Instr], mut cond: Formula) -> Formula {
                     cond = f.asym_and(f.rel(Cc::Ne, s, f.val(0)), cond);
                 }
             }
+            Instr::Assert(a) => {
+                cond = f.asym_and(a.clone(), cond);
+            }
             instr => panic!("not implemented: {instr:?}"),
         }
     }
