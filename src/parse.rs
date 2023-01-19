@@ -293,8 +293,20 @@ fn formula(i: &str) -> Res<Formula> {
     alt((parenthesized, val, not, binary, quant, rel))(i)
 }
 
-fn assertion(i: &str) -> Res<Formula> {
-    preceded(tuple((tag(";#"), space0, tag("assert"), space0)), formula)(i)
+fn formula_line(i: &str) -> Res<FormulaLine> {
+    preceded(
+        pair(tag(";#"), space0),
+        alt((
+            preceded(
+                pair(tag("assert"), space0),
+                map(formula, FormulaLine::Assert),
+            ),
+            preceded(
+                pair(tag("invariant"), space0),
+                map(formula, FormulaLine::Invariant),
+            ),
+        )),
+    )(i)
 }
 
 // Structural parsing
@@ -323,7 +335,7 @@ fn label(i: &str) -> Res<Label> {
 fn line(i: &str) -> Res<Line> {
     alt((
         label.map(Line::Label),
-        assertion.map(Line::Assert),
+        formula_line.map(Line::Formula),
         instr.map(Line::Instr),
     ))(i)
 }

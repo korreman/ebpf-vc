@@ -115,9 +115,15 @@ pub enum Formula {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+pub enum FormulaLine {
+    Assert(Formula),
+    Invariant(Formula),
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Line {
     Label(Label),
-    Assert(Formula),
+    Formula(FormulaLine),
     Instr(Instr),
 }
 

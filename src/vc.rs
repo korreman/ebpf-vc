@@ -61,9 +61,9 @@ pub fn vc(module: Module) -> Result<Vec<Formula>, VcError> {
                 Some(BlockStatus::PreCond(c)) => Some(c.clone()),
                 // If pending, use the pre-assertion if it exists and fail if it doesn't.
                 Some(BlockStatus::Pending) | Some(BlockStatus::Cyclic) => {
-                    // Mark block as cyclic
+                    // Mark block as cyclic.
                     *b.unwrap() = BlockStatus::Cyclic;
-                    if let Some(c) = &module.blocks[target].pre_assert {
+                    if let Some(c) = &module.blocks[target].invariant {
                         Some(c.clone())
                     } else {
                         Some(f.top())
@@ -114,7 +114,7 @@ pub fn vc(module: Module) -> Result<Vec<Formula>, VcError> {
 
         // Cache or use result of WP.
         let top = f.top();
-        let pre_assert = block.pre_assert.as_ref();
+        let pre_assert = block.invariant.as_ref();
         let pre_assert = pre_assert.or(if pre_conds[&label] == BlockStatus::Cyclic {
             Some(&top)
         } else {

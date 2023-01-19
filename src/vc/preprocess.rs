@@ -1,4 +1,4 @@
-use crate::ast::{FBinOp, Formula, Instr, Label, Line};
+use crate::ast::{FBinOp, Formula, FormulaLine, Instr, Label, Line};
 use std::{collections::HashMap, mem::swap};
 
 use super::ast::{Block, Continuation};
@@ -7,6 +7,7 @@ pub enum ConvertErr {
     JumpBounds { target: usize, bound: usize },
     NoLabel(String),
     Unsupported(Instr),
+    MisplacedInvariant,
 }
 
 impl std::fmt::Display for ConvertErr {
@@ -21,6 +22,9 @@ impl std::fmt::Display for ConvertErr {
             ConvertErr::Unsupported(instr) => {
                 f.write_fmt(format_args!("Unsupported instruction: {instr:?}"))
             }
+            ConvertErr::MisplacedInvariant => {
+                f.write_str("invariants can only be placed at the start of blocks")
+            }
         }
     }
 }
@@ -30,7 +34,7 @@ struct State {
     label_aliases: HashMap<String, String>,
     label_counter: usize,
     label: String,
-    pre_assert: Option<Formula>,
+    invariant: Option<Formula>,
     body: Vec<super::Instr>,
 }
 
@@ -41,7 +45,7 @@ impl State {
             label_aliases: HashMap::new(),
             label: "@0".to_owned(),
             label_counter: 0,
-            pre_assert: None,
+            invariant: None,
             body: Vec::new(),
         }
     }
@@ -51,12 +55,12 @@ impl State {
         let mut pre_assert = None;
         let mut body = Vec::new();
         swap(&mut self.label, &mut label);
-        swap(&mut self.pre_assert, &mut pre_assert);
+        swap(&mut self.invariant, &mut pre_assert);
         swap(&mut self.body, &mut body);
         self.blocks.insert(
             label,
             Block {
-                pre_assert,
+                invariant: pre_assert,
                 body,
                 next,
             },
@@ -110,15 +114,16 @@ impl TryInto<super::Module> for crate::ast::Module {
                     }
                     state.change_label(l);
                 }
-                Line::Assert(a) => {
+                Line::Formula(FormulaLine::Assert(a)) => state.body.push(super::Instr::Assert(a)),
+                Line::Formula(FormulaLine::Invariant(i)) => {
                     if state.body.is_empty() {
-                        state.pre_assert = match state.pre_assert {
+                        state.invariant = match state.invariant {
                             // TODO: Normal or asymmetric conjugation?
-                            Some(pa) => Some(Formula::Bin(FBinOp::AndAsym, Box::new((pa, a)))),
-                            None => Some(a),
+                            Some(pa) => Some(Formula::Bin(FBinOp::AndAsym, Box::new((pa, i)))),
+                            None => Some(i),
                         };
                     } else {
-                        state.body.push(super::Instr::Assert(a))
+                        return Err(ConvertErr::MisplacedInvariant);
                     }
                 }
                 Line::Instr(i) => match i {
