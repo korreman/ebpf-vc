@@ -25,10 +25,11 @@ impl Display for VcError {
     }
 }
 
-#[derive(PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq)]
 enum BlockStatus {
     Pending,
     PreCond(Formula),
+    Cyclic,
 }
 
 pub fn vc(module: Module) -> Result<Vec<Formula>, VcError> {
@@ -48,38 +49,43 @@ pub fn vc(module: Module) -> Result<Vec<Formula>, VcError> {
             .entry(label.clone())
             .or_insert(BlockStatus::Pending);
         // Skip block if it has already been processed.
-        if *status != BlockStatus::Pending {
+        if matches!(*status, BlockStatus::PreCond(_)) {
             continue;
         }
         let block = &module.blocks[&label];
 
-        let mut get_post_cond = |target: &Label| match &pre_conds.get(target) {
-            // If already processed, return the result.
-            Some(BlockStatus::PreCond(c)) => Ok(Some(c.clone())),
-            // If pending, use the pre-assertion if it exists and fail if it doesn't.
-            Some(BlockStatus::Pending) => {
-                if let Some(c) = &module.blocks[target].pre_assert {
-                    Ok(Some(c.clone()))
-                } else {
-                    Err(VcError::NoPreAssert(target.clone()))
+        let mut get_post_cond = |target: &Label| {
+            let b = pre_conds.get_mut(target);
+            match b {
+                // If already processed, return the result.
+                Some(BlockStatus::PreCond(c)) => Some(c.clone()),
+                // If pending, use the pre-assertion if it exists and fail if it doesn't.
+                Some(BlockStatus::Pending) | Some(BlockStatus::Cyclic) => {
+                    // Mark block as cyclic
+                    *b.unwrap() = BlockStatus::Cyclic;
+                    if let Some(c) = &module.blocks[target].pre_assert {
+                        Some(c.clone())
+                    } else {
+                        Some(f.top())
+                    }
                 }
-            }
-            // If block isn't marked as pending, push it to the stack.
-            None => {
-                stack.push(label.clone());
-                stack.push(target.clone());
-                Ok(None)
+                // If block isn't marked as anything, push it to the stack.
+                None => {
+                    stack.push(label.clone());
+                    stack.push(target.clone());
+                    None
+                }
             }
         };
 
         // Generate post-condition from continuation.
         let post_cond = match &block.next {
             Continuation::Exit => Some(f.top()),
-            Continuation::Jmp(target) => get_post_cond(target)?,
+            Continuation::Jmp(target) => get_post_cond(target),
             Continuation::Jcc(cc, lhs, rhs, target_t, target_f) => {
                 // First, get post-condition of the two targets.
-                let cond_t = get_post_cond(target_t)?;
-                let cond_f = get_post_cond(target_f)?;
+                let cond_t = get_post_cond(target_t);
+                let cond_f = get_post_cond(target_f);
 
                 // Next, build formula for comparison.
                 let lhs = f.reg(*lhs).0;
@@ -107,7 +113,15 @@ pub fn vc(module: Module) -> Result<Vec<Formula>, VcError> {
         let wp_result = wp(&mut f, &block.body, post_cond);
 
         // Cache or use result of WP.
-        if let Some(pre_assert) = &block.pre_assert {
+        let top = f.top();
+        let pre_assert = block.pre_assert.as_ref();
+        let pre_assert = pre_assert.or(if pre_conds[&label] == BlockStatus::Cyclic {
+            Some(&top)
+        } else {
+            None
+        });
+
+        if let Some(pre_assert) = pre_assert {
             // If the block has a pre-assertion,
             // add a VC requiring that the pre-assertion implies the WP result.
             verif_conds.push(f.implies(pre_assert.clone(), wp_result));

@@ -4,7 +4,6 @@
 
 ;; routine
 loop:
-;# assert true
 jeq r2, 0, end
 mov r3 r1
 mod r3 r2

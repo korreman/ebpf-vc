@@ -4,7 +4,6 @@
 
 ;; routine
 loop:
-;# assert true
 mov r3 r1
 mod r3 r2
 mov r1 r2
