@@ -84,8 +84,8 @@ pub fn vc(module: Module) -> Vec<Formula> {
                 // Generate condition as conjugation between the two branches.
                 cond_t.zip(cond_f).map(|(cond_t, cond_f)| {
                     f.or(
-                        f.asym_and(cc.clone(), cond_t.clone()),
-                        f.asym_and(f.not(cc), cond_f.clone()),
+                        f.asym_and(cc.clone(), cond_t),
+                        f.asym_and(f.not(cc), cond_f),
                     )
                 })
             }
