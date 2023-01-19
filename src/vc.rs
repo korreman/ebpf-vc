@@ -45,11 +45,11 @@ pub fn vc(module: Module) -> Vec<Formula> {
             match b {
                 // If already processed, return the result.
                 Some(BlockStatus::PreCond(c)) => Some(c.clone()),
-                // If pending, use the invariant if it exists and fail if it doesn't.
+                // If pending, use the requirement if it exists and fail if it doesn't.
                 Some(BlockStatus::Pending) | Some(BlockStatus::Cyclic) => {
                     // Mark block as cyclic.
                     *b.unwrap() = BlockStatus::Cyclic;
-                    if let Some(c) = &module.blocks[target].invariant {
+                    if let Some(c) = &module.blocks[target].require {
                         Some(c.clone())
                     } else {
                         Some(f.top())
@@ -100,18 +100,18 @@ pub fn vc(module: Module) -> Vec<Formula> {
 
         // Cache or use result of WP.
         let top = f.top();
-        let invariant = block.invariant.as_ref();
-        let invariant = invariant.or(if pre_conds[&label] == BlockStatus::Cyclic {
+        let require = block.require.as_ref();
+        let require = require.or(if pre_conds[&label] == BlockStatus::Cyclic {
             Some(&top)
         } else {
             None
         });
 
-        if let Some(invariant) = invariant {
-            // If the block has a invariant,
-            // add a VC requiring that the invariant implies the WP result.
-            verif_conds.push(f.implies(invariant.clone(), wp_result));
-            pre_conds.insert(label, BlockStatus::PreCond(invariant.clone()));
+        if let Some(require) = require {
+            // If the block has a requirement,
+            // add a VC requiring that the requirement implies the WP result.
+            verif_conds.push(f.implies(require.clone(), wp_result));
+            pre_conds.insert(label, BlockStatus::PreCond(require.clone()));
         } else {
             // Otherwise, cache the WP result for the block.
             pre_conds.insert(label, BlockStatus::PreCond(wp_result));

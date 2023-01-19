@@ -3,7 +3,7 @@
 ;; r2 - b
 
 loop:
-    ;# invariant r2 <> 0
+    ;# require r2 <> 0
     mov r3 r1
     mod r3 r2
     mov r1 r2

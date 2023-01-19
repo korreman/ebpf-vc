@@ -302,8 +302,8 @@ fn formula_line(i: &str) -> Res<FormulaLine> {
                 map(formula, FormulaLine::Assert),
             ),
             preceded(
-                pair(tag("invariant"), space0),
-                map(formula, FormulaLine::Invariant),
+                pair(alt((tag("require"), tag("req"))), space0),
+                map(formula, FormulaLine::Require),
             ),
         )),
     )(i)

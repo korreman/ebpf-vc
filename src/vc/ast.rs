@@ -27,7 +27,7 @@ pub enum Continuation {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Block {
-    pub invariant: Option<Formula>,
+    pub require: Option<Formula>,
     pub body: Vec<Instr>,
     pub next: Continuation,
 }

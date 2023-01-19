@@ -117,7 +117,7 @@ pub enum Formula {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum FormulaLine {
     Assert(Formula),
-    Invariant(Formula),
+    Require(Formula),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

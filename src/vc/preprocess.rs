@@ -7,7 +7,7 @@ pub enum ConvertErr {
     JumpBounds { target: usize, bound: usize },
     NoLabel(String),
     Unsupported(Instr),
-    MisplacedInvariant,
+    MisplacedRequire,
 }
 
 impl std::fmt::Display for ConvertErr {
@@ -22,8 +22,8 @@ impl std::fmt::Display for ConvertErr {
             ConvertErr::Unsupported(instr) => {
                 f.write_fmt(format_args!("Unsupported instruction: {instr:?}"))
             }
-            ConvertErr::MisplacedInvariant => {
-                f.write_str("invariants can only be placed at the start of blocks")
+            ConvertErr::MisplacedRequire => {
+                f.write_str("requirements can only be placed at the start of blocks")
             }
         }
     }
@@ -34,7 +34,7 @@ struct State {
     label_aliases: HashMap<String, String>,
     label_counter: usize,
     label: String,
-    invariant: Option<Formula>,
+    require: Option<Formula>,
     body: Vec<super::Instr>,
 }
 
@@ -45,22 +45,22 @@ impl State {
             label_aliases: HashMap::new(),
             label: "@0".to_owned(),
             label_counter: 0,
-            invariant: None,
+            require: None,
             body: Vec::new(),
         }
     }
 
     fn finish(&mut self, next: Continuation) {
         let mut label = "".to_owned();
-        let mut invariant = None;
+        let mut require = None;
         let mut body = Vec::new();
         swap(&mut self.label, &mut label);
-        swap(&mut self.invariant, &mut invariant);
+        swap(&mut self.require, &mut require);
         swap(&mut self.body, &mut body);
         self.blocks.insert(
             label,
             Block {
-                invariant,
+                require,
                 body,
                 next,
             },
@@ -115,15 +115,15 @@ impl TryInto<super::Module> for crate::ast::Module {
                     state.change_label(l);
                 }
                 Line::Formula(FormulaLine::Assert(a)) => state.body.push(super::Instr::Assert(a)),
-                Line::Formula(FormulaLine::Invariant(i)) => {
+                Line::Formula(FormulaLine::Require(i)) => {
                     if state.body.is_empty() {
-                        state.invariant = match state.invariant {
+                        state.require = match state.require {
                             // TODO: Normal or asymmetric conjugation?
                             Some(pa) => Some(Formula::Bin(FBinOp::AndAsym, Box::new((pa, i)))),
                             None => Some(i),
                         };
                     } else {
-                        return Err(ConvertErr::MisplacedInvariant);
+                        return Err(ConvertErr::MisplacedRequire);
                     }
                 }
                 Line::Instr(i) => match i {
