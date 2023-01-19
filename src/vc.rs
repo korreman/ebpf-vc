@@ -1,6 +1,6 @@
 //! Verification condition generation.
 mod preprocess;
-use std::{collections::HashMap, fmt::Display};
+use std::collections::HashMap;
 
 pub use preprocess::*;
 
@@ -11,20 +11,6 @@ use crate::{
 };
 use ast::*;
 
-pub enum VcError {
-    NoPreAssert(Label),
-}
-
-impl Display for VcError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            VcError::NoPreAssert(label) => {
-                f.write_fmt(format_args!("missing pre-assertion for {label:?}"))
-            }
-        }
-    }
-}
-
 #[derive(Debug, PartialEq, Eq)]
 enum BlockStatus {
     Pending,
@@ -32,7 +18,7 @@ enum BlockStatus {
     Cyclic,
 }
 
-pub fn vc(module: Module) -> Result<Vec<Formula>, VcError> {
+pub fn vc(module: Module) -> Vec<Formula> {
     // Stores results.
     let mut verif_conds: Vec<Formula> = Vec::new();
 
@@ -59,7 +45,7 @@ pub fn vc(module: Module) -> Result<Vec<Formula>, VcError> {
             match b {
                 // If already processed, return the result.
                 Some(BlockStatus::PreCond(c)) => Some(c.clone()),
-                // If pending, use the pre-assertion if it exists and fail if it doesn't.
+                // If pending, use the invariant if it exists and fail if it doesn't.
                 Some(BlockStatus::Pending) | Some(BlockStatus::Cyclic) => {
                     // Mark block as cyclic.
                     *b.unwrap() = BlockStatus::Cyclic;
@@ -114,18 +100,18 @@ pub fn vc(module: Module) -> Result<Vec<Formula>, VcError> {
 
         // Cache or use result of WP.
         let top = f.top();
-        let pre_assert = block.invariant.as_ref();
-        let pre_assert = pre_assert.or(if pre_conds[&label] == BlockStatus::Cyclic {
+        let invariant = block.invariant.as_ref();
+        let invariant = invariant.or(if pre_conds[&label] == BlockStatus::Cyclic {
             Some(&top)
         } else {
             None
         });
 
-        if let Some(pre_assert) = pre_assert {
-            // If the block has a pre-assertion,
-            // add a VC requiring that the pre-assertion implies the WP result.
-            verif_conds.push(f.implies(pre_assert.clone(), wp_result));
-            pre_conds.insert(label, BlockStatus::PreCond(pre_assert.clone()));
+        if let Some(invariant) = invariant {
+            // If the block has a invariant,
+            // add a VC requiring that the invariant implies the WP result.
+            verif_conds.push(f.implies(invariant.clone(), wp_result));
+            pre_conds.insert(label, BlockStatus::PreCond(invariant.clone()));
         } else {
             // Otherwise, cache the WP result for the block.
             pre_conds.insert(label, BlockStatus::PreCond(wp_result));
@@ -137,7 +123,7 @@ pub fn vc(module: Module) -> Result<Vec<Formula>, VcError> {
         BlockStatus::PreCond(c) => c.clone(),
         _ => panic!("starting block is never processed"),
     });
-    Ok(verif_conds)
+    verif_conds
 }
 
 fn wp(f: &mut FormulaBuilder, instrs: &[Instr], mut cond: Formula) -> Formula {

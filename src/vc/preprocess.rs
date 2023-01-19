@@ -52,15 +52,15 @@ impl State {
 
     fn finish(&mut self, next: Continuation) {
         let mut label = "".to_owned();
-        let mut pre_assert = None;
+        let mut invariant = None;
         let mut body = Vec::new();
         swap(&mut self.label, &mut label);
-        swap(&mut self.invariant, &mut pre_assert);
+        swap(&mut self.invariant, &mut invariant);
         swap(&mut self.body, &mut body);
         self.blocks.insert(
             label,
             Block {
-                invariant: pre_assert,
+                invariant,
                 body,
                 next,
             },

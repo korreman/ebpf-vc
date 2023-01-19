@@ -48,17 +48,9 @@ fn main() -> ExitCode {
     //eprintln!("{processed_ast:#?}\n");
 
     let vc_res = vc(processed_ast);
-    match vc_res {
-        Ok(res) => {
-            println!("use mach.int.UInt64\nuse int.Int\nuse int.ComputerDivision\n");
-            for (i, f) in res.iter().enumerate() {
-                println!("goal G{i}: forall r0 r1 r2 r3 r4 r5 r6 r7 r8 r9 : uint64 . {f}");
-            }
-        }
-        Err(e) => {
-            eprintln!("error: {e}");
-            return ExitCode::FAILURE;
-        }
-    };
+    println!("use mach.int.UInt64\nuse int.Int\nuse int.ComputerDivision\n");
+    for (i, f) in vc_res.iter().enumerate() {
+        println!("goal G{i}: forall r0 r1 r2 r3 r4 r5 r6 r7 r8 r9 : uint64 . {f}");
+    }
     ExitCode::SUCCESS
 }
