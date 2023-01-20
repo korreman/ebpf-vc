@@ -212,4 +212,8 @@ impl FormulaBuilder {
     pub fn binop(&self, op: BinAlu, a: Expr, b: Expr) -> Expr {
         Expr::Binary(op, Box::new((a, b)))
     }
+
+    pub(crate) fn is_mem(&self, clone_1: String, clone_2: Expr) -> Formula {
+        todo!()
+    }
 }

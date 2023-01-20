@@ -157,6 +157,33 @@ fn wp(f: &mut FormulaBuilder, instrs: &[Instr], mut cond: Formula) -> Formula {
                     cond = f.asym_and(f.rel(Cc::Ne, s, f.val(0)), cond);
                 }
             }
+            Instr::Store(WordSize::B64, MemRef(reg, offset), src) => {
+                let (ptr, ptr_id) = f.var("p".to_owned());
+                let (sz, sz_id) = f.var("s".to_owned());
+                let addr = f.binop(BinAlu::Add, f.reg(*reg).0, f.val(*offset));
+                let upper_bound = f.binop(
+                    BinAlu::Sub,
+                    f.binop(BinAlu::Add, ptr.clone(), sz.clone()),
+                    f.val(7),
+                );
+                let valid_addr = f.exists(
+                    ptr_id.clone(),
+                    f.exists(
+                        sz_id.clone(),
+                        f.and(
+                            f.is_mem(ptr_id.clone(), sz.clone()),
+                            f.and(
+                                f.eq(f.binop(BinAlu::Mod, f.val(*offset), f.val(8)), f.val(0)),
+                                f.and(
+                                    f.rel(Cc::Le, ptr.clone(), addr),
+                                    f.rel(Cc::Le, addr, upper_bound),
+                                ),
+                            ),
+                        ),
+                    ),
+                );
+                cond = f.and(valid_addr, cond);
+            }
             Instr::Assert(a) => {
                 cond = f.asym_and(a.clone(), cond);
             }

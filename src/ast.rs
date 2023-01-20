@@ -63,7 +63,7 @@ pub type Offset = i64;
 pub type Label = String;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct MemRef(pub Reg, pub Option<Offset>);
+pub struct MemRef(pub Reg, pub Offset);
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Instr {
@@ -112,6 +112,7 @@ pub enum Formula {
     Bin(FBinOp, Box<(Formula, Formula)>),
     Quant(QType, Ident, Box<Formula>),
     Rel(Cc, Expr, Expr),
+    IsBuffer(Ident, Expr),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
