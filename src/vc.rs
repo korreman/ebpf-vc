@@ -172,7 +172,7 @@ fn assign(f: &mut FormulaBuilder, target: &Ident, e: Expr, cond: Formula) -> For
     let (v, v_id) = f.var(String::from("v"));
     f.forall(
         v_id.clone(),
-        f.implies(f.eq(v, e), f.replace(&target, &v_id, cond)),
+        f.implies(f.eq(v, e), f.replace(target, &v_id, cond)),
     )
 }
 
@@ -188,13 +188,13 @@ fn valid_addr(f: &mut FormulaBuilder, MemRef(reg, offset): &MemRef) -> Formula {
     f.exists(
         ptr_id.clone(),
         f.exists(
-            sz_id.clone(),
+            sz_id,
             f.and(
-                f.is_buffer(ptr_id.clone(), sz.clone()),
+                f.is_buffer(ptr_id, sz),
                 f.and(
                     f.eq(f.binop(BinAlu::Mod, f.val(*offset), f.val(8)), f.val(0)),
                     f.and(
-                        f.rel(Cc::Le, ptr.clone(), addr.clone()),
+                        f.rel(Cc::Le, ptr, addr.clone()),
                         f.rel(Cc::Le, addr, upper_bound),
                     ),
                 ),
