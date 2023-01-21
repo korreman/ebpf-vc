@@ -158,7 +158,7 @@ fn mem_size(i: &str) -> Res<WordSize> {
 fn mem_ref(i: &str) -> Res<MemRef> {
     let inner = map(
         tuple((reg, space0, opt(offset), space0)),
-        |(reg, _, offset, _)| MemRef(reg, offset),
+        |(reg, _, offset, _)| MemRef(reg, offset.unwrap_or(0)),
     );
     delimited(terminated(char('['), space0), inner, char(']'))(i)
 }

@@ -48,7 +48,12 @@ fn main() -> ExitCode {
     //eprintln!("{processed_ast:#?}\n");
 
     let vc_res = vc(processed_ast);
-    println!("use mach.int.UInt64\nuse int.Int\nuse int.ComputerDivision\n");
+    println!(
+        "use mach.int.UInt64\n\
+        use int.Int\n\
+        use int.ComputerDivision\n\
+        predicate is_buffer (p: uint64) (s: uint64)\n"
+    );
     for (i, f) in vc_res.iter().enumerate() {
         println!("goal G{i}: forall r0 r1 r2 r3 r4 r5 r6 r7 r8 r9 : uint64 . {f}");
     }

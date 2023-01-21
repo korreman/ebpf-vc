@@ -63,7 +63,9 @@ impl std::fmt::Display for Formula {
                 };
                 f.write_fmt(format_args!("({f1} {op_str} {f2})"))
             }
-            Formula::Quant(q, id, form) => f.write_fmt(format_args!("({q} {id} : uint64 . {form})")),
+            Formula::Quant(q, id, form) => {
+                f.write_fmt(format_args!("({q} {id} : uint64 . {form})"))
+            }
             Formula::Rel(rel, e1, e2) => {
                 let rel_str = match rel {
                     Cc::Eq => "=",
@@ -80,6 +82,7 @@ impl std::fmt::Display for Formula {
                 };
                 f.write_fmt(format_args!("({e1} {rel_str} {e2})"))
             }
+            Formula::IsBuffer(ptr, sz) => f.write_fmt(format_args!("is_buffer {ptr} {sz}")),
         }
     }
 }
@@ -150,6 +153,12 @@ impl FormulaBuilder {
                 *e1 = self.replace_expr(prev, new, e1.clone());
                 *e2 = self.replace_expr(prev, new, e2.clone());
             }
+            Formula::IsBuffer(ptr, sz) => {
+                if ptr == prev {
+                    *ptr = new.clone();
+                }
+                *sz = self.replace_expr(prev, new, sz.clone());
+            }
             Formula::Val(_) => (),
         }
         f
@@ -213,7 +222,7 @@ impl FormulaBuilder {
         Expr::Binary(op, Box::new((a, b)))
     }
 
-    pub(crate) fn is_mem(&self, clone_1: String, clone_2: Expr) -> Formula {
-        todo!()
+    pub fn is_buffer(&self, ptr: Ident, size: Expr) -> Formula {
+        Formula::IsBuffer(ptr, size)
     }
 }

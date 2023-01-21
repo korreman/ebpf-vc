@@ -6,7 +6,7 @@ pub use preprocess::*;
 
 pub mod ast;
 use crate::{
-    ast::{Formula, Label, WordSize},
+    ast::{Expr, Formula, Ident, Label, WordSize},
     logic::*,
 };
 use ast::*;
@@ -14,8 +14,8 @@ use ast::*;
 #[derive(Debug, PartialEq, Eq)]
 enum BlockStatus {
     Pending,
-    PreCond(Formula),
     Cyclic,
+    PreCond(Formula),
 }
 
 pub fn vc(module: Module) -> Vec<Formula> {
@@ -132,12 +132,7 @@ fn wp(f: &mut FormulaBuilder, instrs: &[Instr], mut cond: Formula) -> Formula {
             Instr::Unary(WordSize::B64, op, reg) => {
                 let (t, t_id) = f.reg(*reg);
                 let e = f.unop(*op, t);
-
-                let (v, v_id) = f.var(String::from("v"));
-                cond = f.forall(
-                    v_id.clone(),
-                    f.implies(f.eq(v, e), f.replace(&t_id, &v_id, cond)),
-                );
+                cond = assign(f, &t_id, e, cond);
             }
             Instr::Binary(WordSize::B64, op, dst, src) => {
                 let (d, d_id) = f.reg(*dst);
@@ -146,43 +141,23 @@ fn wp(f: &mut FormulaBuilder, instrs: &[Instr], mut cond: Formula) -> Formula {
                     RegImm::Imm(i) => f.val(*i),
                 };
                 let e = f.binop(*op, d, s.clone());
-                let (v, v_id) = f.var(String::from("v"));
-                cond = f.forall(
-                    v_id.clone(),
-                    f.implies(f.eq(v, e), f.replace(&d_id, &v_id, cond)),
-                );
+                cond = assign(f, &d_id, e, cond);
 
                 // Add extra conditions for division/modulo by zero.
                 if op == &BinAlu::Div || op == &BinAlu::Mod {
                     cond = f.asym_and(f.rel(Cc::Ne, s, f.val(0)), cond);
                 }
             }
-            Instr::Store(WordSize::B64, MemRef(reg, offset), src) => {
-                let (ptr, ptr_id) = f.var("p".to_owned());
-                let (sz, sz_id) = f.var("s".to_owned());
-                let addr = f.binop(BinAlu::Add, f.reg(*reg).0, f.val(*offset));
-                let upper_bound = f.binop(
-                    BinAlu::Sub,
-                    f.binop(BinAlu::Add, ptr.clone(), sz.clone()),
-                    f.val(7),
-                );
-                let valid_addr = f.exists(
-                    ptr_id.clone(),
-                    f.exists(
-                        sz_id.clone(),
-                        f.and(
-                            f.is_mem(ptr_id.clone(), sz.clone()),
-                            f.and(
-                                f.eq(f.binop(BinAlu::Mod, f.val(*offset), f.val(8)), f.val(0)),
-                                f.and(
-                                    f.rel(Cc::Le, ptr.clone(), addr),
-                                    f.rel(Cc::Le, addr, upper_bound),
-                                ),
-                            ),
-                        ),
-                    ),
-                );
+            Instr::Store(WordSize::B64, mem_ref, _) => {
+                let valid_addr = valid_addr(f, mem_ref);
                 cond = f.and(valid_addr, cond);
+            }
+            Instr::Load(WordSize::B64, dst, mem_ref) => {
+                let valid_addr = valid_addr(f, mem_ref);
+                let (_, v_id) = f.var(String::from("v"));
+                let (_, t_id) = f.reg(*dst);
+                let replace_reg = f.forall(v_id.clone(), f.replace(&t_id, &v_id, cond));
+                cond = f.and(valid_addr, replace_reg);
             }
             Instr::Assert(a) => {
                 cond = f.asym_and(a.clone(), cond);
@@ -191,4 +166,39 @@ fn wp(f: &mut FormulaBuilder, instrs: &[Instr], mut cond: Formula) -> Formula {
         }
     }
     cond
+}
+
+fn assign(f: &mut FormulaBuilder, target: &Ident, e: Expr, cond: Formula) -> Formula {
+    let (v, v_id) = f.var(String::from("v"));
+    f.forall(
+        v_id.clone(),
+        f.implies(f.eq(v, e), f.replace(&target, &v_id, cond)),
+    )
+}
+
+fn valid_addr(f: &mut FormulaBuilder, MemRef(reg, offset): &MemRef) -> Formula {
+    let (ptr, ptr_id) = f.var("p".to_owned());
+    let (sz, sz_id) = f.var("s".to_owned());
+    let addr = f.binop(BinAlu::Add, f.reg(*reg).0, f.val(*offset));
+    let upper_bound = f.binop(
+        BinAlu::Sub,
+        f.binop(BinAlu::Add, ptr.clone(), sz.clone()),
+        f.val(7),
+    );
+    f.exists(
+        ptr_id.clone(),
+        f.exists(
+            sz_id.clone(),
+            f.and(
+                f.is_buffer(ptr_id.clone(), sz.clone()),
+                f.and(
+                    f.eq(f.binop(BinAlu::Mod, f.val(*offset), f.val(8)), f.val(0)),
+                    f.and(
+                        f.rel(Cc::Le, ptr.clone(), addr.clone()),
+                        f.rel(Cc::Le, addr, upper_bound),
+                    ),
+                ),
+            ),
+        ),
+    )
 }
