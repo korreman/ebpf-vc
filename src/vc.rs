@@ -18,7 +18,7 @@ enum BlockStatus {
     PreCond(Formula),
 }
 
-pub fn vc(module: Module) -> Vec<Formula> {
+pub fn vc(module: Module, f: &mut FormulaBuilder) -> Vec<Formula> {
     // Stores results.
     let mut verif_conds: Vec<Formula> = Vec::new();
 
@@ -28,7 +28,6 @@ pub fn vc(module: Module) -> Vec<Formula> {
 
     // Perform a reverse breadth-first traversal of CFG.
     let mut stack = vec![module.start.clone()];
-    let mut f = FormulaBuilder::new();
     while let Some(label) = stack.pop() {
         // Try to mark block as pending.
         let status = pre_conds
@@ -66,7 +65,7 @@ pub fn vc(module: Module) -> Vec<Formula> {
 
         // Generate post-condition from continuation.
         let post_cond = match &block.next {
-            Continuation::Exit => Some(f.top()),
+            Continuation::Exit => Some(module.ensures.clone()),
             Continuation::Jmp(target) => get_post_cond(target),
             Continuation::Jcc(cc, lhs, rhs, target_t, target_f) => {
                 // First, get post-condition of the two targets.
@@ -96,7 +95,7 @@ pub fn vc(module: Module) -> Vec<Formula> {
         };
 
         // Perform WP-calculus on post-condition with block body.
-        let wp_result = wp(&mut f, &block.body, post_cond);
+        let wp_result = wp(f, &block.body, post_cond);
 
         // Cache or use result of WP.
         let top = f.top();
@@ -120,7 +119,7 @@ pub fn vc(module: Module) -> Vec<Formula> {
 
     // Add the pre-condition of the starting block as a VC.
     verif_conds.push(match &pre_conds[&module.start] {
-        BlockStatus::PreCond(c) => c.clone(),
+        BlockStatus::PreCond(c) => f.implies(module.requires, c.clone()),
         _ => panic!("starting block is never processed"),
     });
     verif_conds

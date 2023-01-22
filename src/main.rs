@@ -3,6 +3,7 @@ use std::{ffi::OsString, process::ExitCode};
 use argh::FromArgs;
 
 use ebpf_vc::{
+    logic::FormulaBuilder,
     parse::module,
     vc::{ast::Module, vc, ConvertErr},
 };
@@ -37,7 +38,8 @@ fn main() -> ExitCode {
     };
     //eprintln!("{ast:#?}\n");
 
-    let preprocess_res: Result<Module, ConvertErr> = ast.try_into();
+    let mut f = FormulaBuilder::new();
+    let preprocess_res: Result<Module, ConvertErr> = ast.preprocess(&mut f);
     let processed_ast = match preprocess_res {
         Ok(p) => p,
         Err(e) => {
@@ -47,7 +49,7 @@ fn main() -> ExitCode {
     };
     //eprintln!("{processed_ast:#?}\n");
 
-    let vc_res = vc(processed_ast);
+    let vc_res = vc(processed_ast, &mut f);
     println!(
         "use mach.int.UInt64\n\
         use int.Int\n\

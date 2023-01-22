@@ -1,4 +1,7 @@
-use crate::ast::{FBinOp, Formula, FormulaLine, Instr, Label, Line};
+use crate::{
+    ast::{Formula, FormulaLine, Instr, Label, Line},
+    logic::FormulaBuilder,
+};
 use std::{collections::HashMap, mem::swap};
 
 use super::ast::{Block, Continuation};
@@ -100,13 +103,11 @@ impl State {
     }
 }
 
-impl TryInto<super::Module> for crate::ast::Module {
-    type Error = ConvertErr;
-
-    fn try_into(self) -> Result<crate::vc::ast::Module, Self::Error> {
+impl crate::ast::Module {
+    pub fn preprocess(self, f: &mut FormulaBuilder) -> Result<crate::vc::ast::Module, ConvertErr> {
         // TODO: Jump followed by targets point to wrong internal name.
         let mut state = State::new();
-        for line in self {
+        for line in self.lines {
             match line {
                 Line::Label(l) => {
                     if !state.body.is_empty() {
@@ -119,7 +120,7 @@ impl TryInto<super::Module> for crate::ast::Module {
                     if state.body.is_empty() {
                         state.require = match state.require {
                             // TODO: Normal or asymmetric conjugation?
-                            Some(pa) => Some(Formula::Bin(FBinOp::AndAsym, Box::new((pa, i)))),
+                            Some(pa) => Some(f.asym_and(pa, i)),
                             None => Some(i),
                         };
                     } else {
@@ -159,7 +160,12 @@ impl TryInto<super::Module> for crate::ast::Module {
             }
         }
         state.resolve_aliases();
+
+        let requires = self.requires.into_iter().fold(f.top(), |a, b| f.and(a, b));
+        let ensures = self.ensures.into_iter().fold(f.top(), |a, b| f.and(a, b));
         Ok(super::ast::Module {
+            requires,
+            ensures,
             start: state
                 .label_aliases
                 .get("@0")

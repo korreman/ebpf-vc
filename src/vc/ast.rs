@@ -34,6 +34,8 @@ pub struct Block {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Module {
+    pub requires: Formula,
+    pub ensures: Formula,
     pub start: Label,
     pub blocks: HashMap<Label, Block>,
 }

@@ -128,4 +128,8 @@ pub enum Line {
     Instr(Instr),
 }
 
-pub type Module = Vec<Line>;
+pub struct Module {
+    pub requires: Vec<Formula>,
+    pub ensures: Vec<Formula>,
+    pub lines: Vec<Line>,
+}
