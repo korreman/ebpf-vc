@@ -393,7 +393,7 @@ fn labels() {
 
 #[test]
 fn formulas() {
-    let f = crate::logic::FormulaBuilder::new();
+    let f = crate::formula::FormulaBuilder::new();
     parses(formula, "true", f.top());
     parses(formula, "false", f.bot());
 
@@ -423,7 +423,7 @@ fn formulas() {
 
 #[test]
 fn assertions() {
-    let f = crate::logic::FormulaBuilder::new();
+    let f = crate::formulaBuilder::new();
     parses(assertion, ";# assert true", f.top());
     parses(assertion, ";# assert false", f.bot());
 

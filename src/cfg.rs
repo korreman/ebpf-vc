@@ -1,10 +1,53 @@
-use crate::{
-    ast::{Formula, FormulaLine, Instr, Label, Line},
-    logic::FormulaBuilder,
-};
-use std::{collections::HashMap, mem::swap};
+//! A processed AST, ready for VC-generation.
+//! It currently only supports 64-bit operations.
 
-use super::ast::{Block, Continuation};
+use std::{
+    collections::HashMap,
+    fmt::{self, Display, Formatter},
+    mem::swap,
+};
+
+pub use crate::ast::{
+    BinAlu, Cc, Expr, Formula, Ident, Imm, Label, MemRef, Offset, Reg, RegImm, UnAlu, WordSize,
+};
+use crate::{
+    ast::{FormulaLine, Instr, Line, Module},
+    formula::FormulaBuilder,
+};
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum CInstr {
+    Assert(Formula),
+    Unary(WordSize, UnAlu, Reg),
+    Binary(WordSize, BinAlu, Reg, RegImm),
+    Store(WordSize, MemRef, RegImm),
+    Load(WordSize, Reg, MemRef),
+    LoadImm(Reg, Imm),
+    LoadMapFd(Reg, Imm),
+    Call(Imm),
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Continuation {
+    Exit,
+    Jmp(Label),
+    Jcc(Cc, Reg, RegImm, Label, Label),
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Block {
+    pub require: Option<Formula>,
+    pub body: Vec<CInstr>,
+    pub next: Continuation,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Cfg {
+    pub requires: Formula,
+    pub ensures: Formula,
+    pub start: Label,
+    pub blocks: HashMap<Label, Block>,
+}
 
 pub enum ConvertErr {
     JumpBounds { target: usize, bound: usize },
@@ -13,8 +56,8 @@ pub enum ConvertErr {
     MisplacedRequire,
 }
 
-impl std::fmt::Display for ConvertErr {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl Display for ConvertErr {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         match self {
             ConvertErr::NoLabel(label) => {
                 f.write_fmt(format_args!("Jump target \"{label}\" doesn't exist"))
@@ -38,7 +81,7 @@ struct State {
     label_counter: usize,
     label: String,
     require: Option<Formula>,
-    body: Vec<super::Instr>,
+    body: Vec<CInstr>,
 }
 
 impl State {
@@ -103,11 +146,10 @@ impl State {
     }
 }
 
-impl crate::ast::Module {
-    pub fn preprocess(self, f: &mut FormulaBuilder) -> Result<crate::vc::ast::Module, ConvertErr> {
-        // TODO: Jump followed by targets point to wrong internal name.
+impl Cfg {
+    pub fn create(ast: Module, f: &mut FormulaBuilder) -> Result<Cfg, ConvertErr> {
         let mut state = State::new();
-        for line in self.lines {
+        for line in ast.lines {
             match line {
                 Line::Label(l) => {
                     if !state.body.is_empty() {
@@ -115,7 +157,7 @@ impl crate::ast::Module {
                     }
                     state.change_label(l);
                 }
-                Line::Formula(FormulaLine::Assert(a)) => state.body.push(super::Instr::Assert(a)),
+                Line::Formula(FormulaLine::Assert(a)) => state.body.push(CInstr::Assert(a)),
                 Line::Formula(FormulaLine::Require(i)) => {
                     if state.body.is_empty() {
                         state.require = match state.require {
@@ -129,15 +171,13 @@ impl crate::ast::Module {
                 }
                 Line::Instr(i) => match i {
                     // Simple conversions
-                    Instr::Unary(s, o, r) => state.body.push(super::Instr::Unary(s, o, r)),
-                    Instr::Binary(s, o, d, ri) => {
-                        state.body.push(super::Instr::Binary(s, o, d, ri))
-                    }
-                    Instr::Store(s, m, ri) => state.body.push(super::Instr::Store(s, m, ri)),
-                    Instr::Load(s, d, m) => state.body.push(super::Instr::Load(s, d, m)),
-                    Instr::LoadImm(r, i) => state.body.push(super::Instr::LoadImm(r, i)),
-                    Instr::LoadMapFd(r, i) => state.body.push(super::Instr::LoadMapFd(r, i)),
-                    Instr::Call(i) => state.body.push(super::Instr::Call(i)),
+                    Instr::Unary(s, o, r) => state.body.push(CInstr::Unary(s, o, r)),
+                    Instr::Binary(s, o, d, ri) => state.body.push(CInstr::Binary(s, o, d, ri)),
+                    Instr::Store(s, m, ri) => state.body.push(CInstr::Store(s, m, ri)),
+                    Instr::Load(s, d, m) => state.body.push(CInstr::Load(s, d, m)),
+                    Instr::LoadImm(r, i) => state.body.push(CInstr::LoadImm(r, i)),
+                    Instr::LoadMapFd(r, i) => state.body.push(CInstr::LoadMapFd(r, i)),
+                    Instr::Call(i) => state.body.push(CInstr::Call(i)),
                     // End of blocks
                     Instr::Jmp(t) => {
                         state.finish(Continuation::Jmp(t));
@@ -161,9 +201,9 @@ impl crate::ast::Module {
         }
         state.resolve_aliases();
 
-        let requires = self.requires.into_iter().fold(f.top(), |a, b| f.and(a, b));
-        let ensures = self.ensures.into_iter().fold(f.top(), |a, b| f.and(a, b));
-        Ok(super::ast::Module {
+        let requires = ast.requires.into_iter().fold(f.top(), |a, b| f.and(a, b));
+        let ensures = ast.ensures.into_iter().fold(f.top(), |a, b| f.and(a, b));
+        Ok(Cfg {
             requires,
             ensures,
             start: state

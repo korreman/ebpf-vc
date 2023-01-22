@@ -1,15 +1,11 @@
 //! Verification condition generation.
-mod preprocess;
+
 use std::collections::HashMap;
 
-pub use preprocess::*;
-
-pub mod ast;
 use crate::{
-    ast::{Expr, Formula, Ident, Label, WordSize},
-    logic::*,
+    cfg::*,
+    formula::*,
 };
-use ast::*;
 
 #[derive(Debug, PartialEq, Eq)]
 enum BlockStatus {
@@ -18,7 +14,7 @@ enum BlockStatus {
     PreCond(Formula),
 }
 
-pub fn vc(module: Module, f: &mut FormulaBuilder) -> Vec<Formula> {
+pub fn vc(module: Cfg, f: &mut FormulaBuilder) -> Vec<Formula> {
     // Stores results.
     let mut verif_conds: Vec<Formula> = Vec::new();
 
@@ -125,15 +121,15 @@ pub fn vc(module: Module, f: &mut FormulaBuilder) -> Vec<Formula> {
     verif_conds
 }
 
-fn wp(f: &mut FormulaBuilder, instrs: &[Instr], mut cond: Formula) -> Formula {
+fn wp(f: &mut FormulaBuilder, instrs: &[CInstr], mut cond: Formula) -> Formula {
     for instr in instrs.iter().rev() {
         match instr {
-            Instr::Unary(WordSize::B64, op, reg) => {
+            CInstr::Unary(WordSize::B64, op, reg) => {
                 let (t, t_id) = f.reg(*reg);
                 let e = f.unop(*op, t);
                 cond = assign(f, &t_id, e, cond);
             }
-            Instr::Binary(WordSize::B64, op, dst, src) => {
+            CInstr::Binary(WordSize::B64, op, dst, src) => {
                 let (d, d_id) = f.reg(*dst);
                 let s = match src {
                     RegImm::Reg(r) => f.reg(*r).0,
@@ -147,18 +143,18 @@ fn wp(f: &mut FormulaBuilder, instrs: &[Instr], mut cond: Formula) -> Formula {
                     cond = f.asym_and(f.rel(Cc::Ne, s, f.val(0)), cond);
                 }
             }
-            Instr::Store(WordSize::B64, mem_ref, _) => {
+            CInstr::Store(WordSize::B64, mem_ref, _) => {
                 let valid_addr = valid_addr(f, mem_ref);
                 cond = f.and(valid_addr, cond);
             }
-            Instr::Load(WordSize::B64, dst, mem_ref) => {
+            CInstr::Load(WordSize::B64, dst, mem_ref) => {
                 let valid_addr = valid_addr(f, mem_ref);
                 let (_, v_id) = f.var(String::from("v"));
                 let (_, t_id) = f.reg(*dst);
                 let replace_reg = f.forall(v_id.clone(), f.replace(&t_id, &v_id, cond));
                 cond = f.and(valid_addr, replace_reg);
             }
-            Instr::Assert(a) => {
+            CInstr::Assert(a) => {
                 cond = f.asym_and(a.clone(), cond);
             }
             instr => panic!("not implemented: {instr:?}"),

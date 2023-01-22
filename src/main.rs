@@ -1,11 +1,12 @@
-use std::{ffi::OsString, process::ExitCode};
-
 use argh::FromArgs;
 
+use std::{ffi::OsString, process::ExitCode};
+
 use ebpf_vc::{
-    logic::FormulaBuilder,
+    cfg::{Cfg, ConvertErr},
+    formula::FormulaBuilder,
     parse::module,
-    vc::{ast::Module, vc, ConvertErr},
+    vc::vc,
 };
 
 #[derive(FromArgs)]
@@ -39,7 +40,7 @@ fn main() -> ExitCode {
     //eprintln!("{ast:#?}\n");
 
     let mut f = FormulaBuilder::new();
-    let preprocess_res: Result<Module, ConvertErr> = ast.preprocess(&mut f);
+    let preprocess_res: Result<Cfg, ConvertErr> = Cfg::create(ast, &mut f);
     let processed_ast = match preprocess_res {
         Ok(p) => p,
         Err(e) => {

@@ -1,22 +1,19 @@
 //! Parsing of eBPF assembly.
+
 use nom::{
-    branch::alt,
-    bytes::complete::tag,
-    character::complete::{alpha1, alphanumeric1, char, newline, one_of, satisfy, space0, space1},
-    combinator::{eof, map, map_opt, map_res, opt, peek, recognize, value, verify},
-    multi::{many0, many0_count, many1, separated_list0},
-    sequence::{delimited, pair, preceded, terminated, tuple},
-    IResult, Parser,
+    branch::alt, bytes::complete::tag, character::complete::*, combinator::*, multi::*,
+    sequence::*, IResult, Parser,
 };
-type Res<'a, O> = IResult<&'a str, O>;
+
+use crate::ast::*;
 
 #[cfg(test)]
 #[rustfmt::skip]
 mod tests;
 
-use crate::ast::*;
-
 // TODO: Improve the whitespace story.
+
+type Res<'a, O> = IResult<&'a str, O>;
 
 // Tokens
 
