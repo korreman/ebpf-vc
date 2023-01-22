@@ -287,8 +287,12 @@ fn formula(i: &str) -> Res<Formula> {
     let rel = tuple((expr, space0, rel_op, space0, expr))
         .map(|(e1, _, op, _, e2)| Formula::Rel(op, e1, e2));
 
-    let is_buffer = tuple((tag("is_buffer"), space0, parens(tuple((ident, expr)))))
-        .map(|(_, _, (id, e))| Formula::IsBuffer(id.to_owned(), e));
+    let is_buffer = tuple((
+        tag("is_buffer"),
+        space0,
+        parens(tuple((ident, char(','), space0, expr, space0))),
+    ))
+    .map(|(_, _, (id, _, _, e, _))| Formula::IsBuffer(id.to_owned(), e));
     alt((parenthesized, val, not, binary, quant, rel, is_buffer))(i)
 }
 
@@ -343,16 +347,16 @@ pub fn module(i: &str) -> Res<Module> {
     let requirement = preceded(tuple((tag(";#"), space0, tag("requires"), space0)), formula);
     let ensurance = preceded(tuple((tag(";#"), space0, tag("ensures"), space0)), formula);
     let components = tuple((
-        separated_list0(line_sep, requirement),
-        separated_list0(line_sep, ensurance),
+        many0(terminated(requirement, line_sep)),
+        many0(terminated(ensurance, line_sep)),
         separated_list0(line_sep, line),
     ));
     delimited(
         opt(line_sep),
         map(components, |(rs, es, ls)| Module {
+            lines: ls,
             requires: rs,
             ensures: es,
-            lines: ls,
         }),
         pair(opt(line_sep), eof),
     )(i)
