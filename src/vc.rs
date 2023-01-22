@@ -2,10 +2,7 @@
 
 use std::collections::HashMap;
 
-use crate::{
-    cfg::*,
-    formula::*,
-};
+use crate::{cfg::*, formula::*};
 
 #[derive(Debug, PartialEq, Eq)]
 enum BlockStatus {
@@ -143,12 +140,12 @@ fn wp(f: &mut FormulaBuilder, instrs: &[CInstr], mut cond: Formula) -> Formula {
                     cond = f.asym_and(f.rel(Cc::Ne, s, f.val(0)), cond);
                 }
             }
-            CInstr::Store(WordSize::B64, mem_ref, _) => {
-                let valid_addr = valid_addr(f, mem_ref);
+            CInstr::Store(size, mem_ref, _) => {
+                let valid_addr = valid_addr(f, *size, mem_ref);
                 cond = f.and(valid_addr, cond);
             }
-            CInstr::Load(WordSize::B64, dst, mem_ref) => {
-                let valid_addr = valid_addr(f, mem_ref);
+            CInstr::Load(size, dst, mem_ref) => {
+                let valid_addr = valid_addr(f, *size, mem_ref);
                 let (_, v_id) = f.var(String::from("v"));
                 let (_, t_id) = f.reg(*dst);
                 let replace_reg = f.forall(v_id.clone(), f.replace(&t_id, &v_id, cond));
@@ -171,14 +168,20 @@ fn assign(f: &mut FormulaBuilder, target: &Ident, e: Expr, cond: Formula) -> For
     )
 }
 
-fn valid_addr(f: &mut FormulaBuilder, MemRef(reg, offset): &MemRef) -> Formula {
+fn valid_addr(f: &mut FormulaBuilder, size: WordSize, MemRef(reg, offset): &MemRef) -> Formula {
     let (ptr, ptr_id) = f.var("p".to_owned());
     let (sz, sz_id) = f.var("s".to_owned());
     let addr = f.binop(BinAlu::Add, f.reg(*reg).0, f.val(*offset));
+    let bytes = match size {
+        WordSize::B8 => 1,
+        WordSize::B16 => 2,
+        WordSize::B32 => 4,
+        WordSize::B64 => 8,
+    };
     let upper_bound = f.binop(
         BinAlu::Sub,
         f.binop(BinAlu::Add, ptr.clone(), sz.clone()),
-        f.val(7),
+        f.val(bytes - 1),
     );
     f.exists(
         ptr_id.clone(),
@@ -187,7 +190,7 @@ fn valid_addr(f: &mut FormulaBuilder, MemRef(reg, offset): &MemRef) -> Formula {
             f.and(
                 f.is_buffer(ptr_id, sz),
                 f.and(
-                    f.eq(f.binop(BinAlu::Mod, f.val(*offset), f.val(8)), f.val(0)),
+                    f.eq(f.binop(BinAlu::Mod, f.val(*offset), f.val(bytes)), f.val(0)),
                     f.and(
                         f.rel(Cc::Le, ptr, addr.clone()),
                         f.rel(Cc::Le, addr, upper_bound),
