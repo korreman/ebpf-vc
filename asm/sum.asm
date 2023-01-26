@@ -17,3 +17,4 @@ loop:
     jne r3 r2 loop
 
     mov r0 r5
+    exit

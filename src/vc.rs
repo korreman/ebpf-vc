@@ -30,6 +30,7 @@ pub fn vc(module: Cfg, f: &mut FormulaBuilder) -> Vec<Formula> {
         if matches!(*status, BlockStatus::PreCond(_)) {
             continue;
         }
+        println!("{label}");
         let block = &module.blocks[&label];
 
         let mut get_post_cond = |target: &Label| {

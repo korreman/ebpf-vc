@@ -113,11 +113,11 @@ impl State {
         );
     }
 
-    fn change_label(&mut self, mut l: Label) {
+    fn change_label(&mut self, l: Label) {
         // TODO: resolve multiple occurrences of same label
-        let value = l.clone();
-        swap(&mut self.label, &mut l);
-        self.label_aliases.insert(l, value);
+        let mut tmp = l.clone();
+        swap(&mut self.label, &mut tmp);
+        self.label_aliases.insert(tmp, l);
     }
 
     fn next_label(&mut self) -> Label {
