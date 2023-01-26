@@ -189,13 +189,13 @@ fn valid_addr(f: &mut FormulaBuilder, size: WordSize, MemRef(reg, offset): &MemR
             sz_id,
             f.and(
                 f.is_buffer(ptr_id, sz),
-                f.and(
-                    f.eq(f.binop(BinAlu::Mod, f.val(*offset), f.val(bytes)), f.val(0)),
+                //f.and(
+                //    f.eq(f.binop(BinAlu::Mod, addr.clone(), f.val(bytes)), f.val(0)),
                     f.and(
                         f.rel(Cc::Le, ptr, addr.clone()),
                         f.rel(Cc::Lt, addr, upper_bound),
                     ),
-                ),
+                //),
             ),
         ),
     )
