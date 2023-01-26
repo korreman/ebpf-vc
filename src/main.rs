@@ -48,7 +48,7 @@ fn main() -> ExitCode {
             return ExitCode::FAILURE;
         }
     };
-    eprintln!("{processed_ast:#?}\n");
+    //eprintln!("{processed_ast:#?}\n");
 
     let vc_res = vc(processed_ast, &mut f);
     println!(

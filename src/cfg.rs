@@ -8,24 +8,14 @@ use std::{
 };
 
 pub use crate::ast::{
-    BinAlu, Cc, Expr, Formula, Ident, Imm, Label, MemRef, Offset, Reg, RegImm, UnAlu, WordSize,
-};
-use crate::{
-    ast::{FormulaLine, Instr, Line, Module},
-    formula::FormulaBuilder,
+    BinAlu, Cc, Cont, Expr, Formula, Ident, Imm, Label, MemRef, Offset, Reg, RegImm, UnAlu,
+    WordSize, Stmt,
 };
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum CInstr {
-    Assert(Formula),
-    Unary(WordSize, UnAlu, Reg),
-    Binary(WordSize, BinAlu, Reg, RegImm),
-    Store(WordSize, MemRef, RegImm),
-    Load(WordSize, Reg, MemRef),
-    LoadImm(Reg, Imm),
-    LoadMapFd(Reg, Imm),
-    Call(Imm),
-}
+use crate::{
+    ast::{Line, Logic, Module},
+    formula::FormulaBuilder,
+};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Continuation {
@@ -37,7 +27,7 @@ pub enum Continuation {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Block {
     pub require: Option<Formula>,
-    pub body: Vec<CInstr>,
+    pub body: Vec<Stmt>,
     pub next: Continuation,
 }
 
@@ -52,7 +42,7 @@ pub struct Cfg {
 pub enum ConvertErr {
     JumpBounds { target: usize, bound: usize },
     NoLabel(String),
-    Unsupported(Instr),
+    Unsupported(Stmt),
     MisplacedRequire,
 }
 
@@ -81,7 +71,7 @@ struct State {
     label_counter: usize,
     label: String,
     require: Option<Formula>,
-    body: Vec<CInstr>,
+    body: Vec<Stmt>,
 }
 
 impl State {
@@ -157,8 +147,8 @@ impl Cfg {
                     }
                     state.change_label(l);
                 }
-                Line::Formula(FormulaLine::Assert(a)) => state.body.push(CInstr::Assert(a)),
-                Line::Formula(FormulaLine::Require(i)) => {
+                Line::Logic(Logic::Assert(a)) => state.body.push(Stmt::Assert(a)),
+                Line::Logic(Logic::Require(i)) => {
                     if state.body.is_empty() {
                         state.require = match state.require {
                             // TODO: Normal or asymmetric conjugation?
@@ -169,22 +159,15 @@ impl Cfg {
                         return Err(ConvertErr::MisplacedRequire);
                     }
                 }
-                Line::Instr(i) => match i {
-                    // Simple conversions
-                    Instr::Unary(s, o, r) => state.body.push(CInstr::Unary(s, o, r)),
-                    Instr::Binary(s, o, d, ri) => state.body.push(CInstr::Binary(s, o, d, ri)),
-                    Instr::Store(s, m, ri) => state.body.push(CInstr::Store(s, m, ri)),
-                    Instr::Load(s, d, m) => state.body.push(CInstr::Load(s, d, m)),
-                    Instr::LoadImm(r, i) => state.body.push(CInstr::LoadImm(r, i)),
-                    Instr::LoadMapFd(r, i) => state.body.push(CInstr::LoadMapFd(r, i)),
-                    Instr::Call(i) => state.body.push(CInstr::Call(i)),
+                Line::Stmt(i) => state.body.push(i),
+                Line::Cont(c) => match c {
                     // End of blocks
-                    Instr::Jmp(t) => {
+                    Cont::Jmp(t) => {
                         state.finish(Continuation::Jmp(t));
                         let next_label = state.next_label();
                         state.change_label(next_label)
                     }
-                    Instr::Jcc(cc, reg, reg_imm, target) => {
+                    Cont::Jcc(cc, reg, reg_imm, target) => {
                         let next_label = state.next_label();
                         state.finish(Continuation::Jcc(
                             cc,
@@ -195,7 +178,7 @@ impl Cfg {
                         ));
                         state.change_label(next_label);
                     }
-                    Instr::Exit => state.finish(Continuation::Exit),
+                    Cont::Exit => state.finish(Continuation::Exit),
                 },
             }
         }

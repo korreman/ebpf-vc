@@ -30,7 +30,6 @@ pub fn vc(module: Cfg, f: &mut FormulaBuilder) -> Vec<Formula> {
         if matches!(*status, BlockStatus::PreCond(_)) {
             continue;
         }
-        println!("{label}");
         let block = &module.blocks[&label];
 
         let mut get_post_cond = |target: &Label| {
@@ -119,15 +118,15 @@ pub fn vc(module: Cfg, f: &mut FormulaBuilder) -> Vec<Formula> {
     verif_conds
 }
 
-fn wp(f: &mut FormulaBuilder, instrs: &[CInstr], mut cond: Formula) -> Formula {
+fn wp(f: &mut FormulaBuilder, instrs: &[Stmt], mut cond: Formula) -> Formula {
     for instr in instrs.iter().rev() {
         match instr {
-            CInstr::Unary(WordSize::B64, op, reg) => {
+            Stmt::Unary(WordSize::B64, op, reg) => {
                 let (t, t_id) = f.reg(*reg);
                 let e = f.unop(*op, t);
                 cond = assign(f, &t_id, e, cond);
             }
-            CInstr::Binary(WordSize::B64, op, dst, src) => {
+            Stmt::Binary(WordSize::B64, op, dst, src) => {
                 let (d, d_id) = f.reg(*dst);
                 let s = match src {
                     RegImm::Reg(r) => f.reg(*r).0,
@@ -141,18 +140,18 @@ fn wp(f: &mut FormulaBuilder, instrs: &[CInstr], mut cond: Formula) -> Formula {
                     cond = f.asym_and(f.rel(Cc::Ne, s, f.val(0)), cond);
                 }
             }
-            CInstr::Store(size, mem_ref, _) => {
+            Stmt::Store(size, mem_ref, _) => {
                 let valid_addr = valid_addr(f, *size, mem_ref);
                 cond = f.and(valid_addr, cond);
             }
-            CInstr::Load(size, dst, mem_ref) => {
+            Stmt::Load(size, dst, mem_ref) => {
                 let valid_addr = valid_addr(f, *size, mem_ref);
                 let (_, v_id) = f.var(String::from("v"));
                 let (_, t_id) = f.reg(*dst);
                 let replace_reg = f.forall(v_id.clone(), f.replace(&t_id, &v_id, cond));
                 cond = f.and(valid_addr, replace_reg);
             }
-            CInstr::Assert(a) => {
+            Stmt::Assert(a) => {
                 cond = f.asym_and(a.clone(), cond);
             }
             instr => panic!("not implemented: {instr:?}"),

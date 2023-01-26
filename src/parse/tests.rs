@@ -204,143 +204,143 @@ fn memory_references() {
 
 #[test]
 fn unary_instrs() {
-    parses(instr, "neg r0", Instr::Unary(WordSize::B64, UnAlu::Neg, Reg::R0));
-    parses(instr, "le r3", Instr::Unary(WordSize::B64, UnAlu::Le, Reg::R3));
-    parses(instr, "be r8", Instr::Unary(WordSize::B64, UnAlu::Be, Reg::R8));
+    parses(stmt, "neg r0", Stmt::Unary(WordSize::B64, UnAlu::Neg, Reg::R0));
+    parses(stmt, "le r3", Stmt::Unary(WordSize::B64, UnAlu::Le, Reg::R3));
+    parses(stmt, "be r8", Stmt::Unary(WordSize::B64, UnAlu::Be, Reg::R8));
 
-    parses(instr, "neg32 r0", Instr::Unary(WordSize::B32, UnAlu::Neg, Reg::R0));
-    parses(instr, "le32 r3", Instr::Unary(WordSize::B32, UnAlu::Le, Reg::R3));
-    parses(instr, "be32 r8", Instr::Unary(WordSize::B32, UnAlu::Be, Reg::R8));
+    parses(stmt, "neg32 r0", Stmt::Unary(WordSize::B32, UnAlu::Neg, Reg::R0));
+    parses(stmt, "le32 r3", Stmt::Unary(WordSize::B32, UnAlu::Le, Reg::R3));
+    parses(stmt, "be32 r8", Stmt::Unary(WordSize::B32, UnAlu::Be, Reg::R8));
 
-    rejects(instr, "neg r0,");
-    rejects(instr, "neg32, r0");
-    rejects(instr, "neg16 r0");
-    rejects(instr, "neg8 r0");
-    rejects(instr, "neg r0 r1");
-    rejects(instr, "be r0 r1");
-    rejects(instr, "le r0 r1");
+    rejects(stmt, "neg r0,");
+    rejects(stmt, "neg32, r0");
+    rejects(stmt, "neg16 r0");
+    rejects(stmt, "neg8 r0");
+    rejects(stmt, "neg r0 r1");
+    rejects(stmt, "be r0 r1");
+    rejects(stmt, "le r0 r1");
 }
 
 #[test]
 fn binary_instrs() {
-    parses(instr, "mov r1 r2", Instr::Binary(WordSize::B64, BinAlu::Mov, Reg::R1, RegImm::Reg(Reg::R2)));
-    parses(instr, "add r1 r2", Instr::Binary(WordSize::B64, BinAlu::Add, Reg::R1, RegImm::Reg(Reg::R2)));
-    parses(instr, "sub r1 r2", Instr::Binary(WordSize::B64, BinAlu::Sub, Reg::R1, RegImm::Reg(Reg::R2)));
-    parses(instr, "mul r1 r2", Instr::Binary(WordSize::B64, BinAlu::Mul, Reg::R1, RegImm::Reg(Reg::R2)));
-    parses(instr, "div r1 r2", Instr::Binary(WordSize::B64, BinAlu::Div, Reg::R1, RegImm::Reg(Reg::R2)));
-    parses(instr, "mod r1 r2", Instr::Binary(WordSize::B64, BinAlu::Mod, Reg::R1, RegImm::Reg(Reg::R2)));
-    parses(instr, "and r1 r2", Instr::Binary(WordSize::B64, BinAlu::And, Reg::R1, RegImm::Reg(Reg::R2)));
-    parses(instr, "or r1 r2", Instr::Binary(WordSize::B64, BinAlu::Or, Reg::R1, RegImm::Reg(Reg::R2)));
-    parses(instr, "xor r1 r2", Instr::Binary(WordSize::B64, BinAlu::Xor, Reg::R1, RegImm::Reg(Reg::R2)));
-    parses(instr, "lsh r1 r2", Instr::Binary(WordSize::B64, BinAlu::Lsh, Reg::R1, RegImm::Reg(Reg::R2)));
-    parses(instr, "rsh r1 r2", Instr::Binary(WordSize::B64, BinAlu::Rsh, Reg::R1, RegImm::Reg(Reg::R2)));
-    parses(instr, "arsh r1 r2", Instr::Binary(WordSize::B64, BinAlu::Arsh, Reg::R1, RegImm::Reg(Reg::R2)));
+    parses(stmt, "mov r1 r2", Stmt::Binary(WordSize::B64, BinAlu::Mov, Reg::R1, RegImm::Reg(Reg::R2)));
+    parses(stmt, "add r1 r2", Stmt::Binary(WordSize::B64, BinAlu::Add, Reg::R1, RegImm::Reg(Reg::R2)));
+    parses(stmt, "sub r1 r2", Stmt::Binary(WordSize::B64, BinAlu::Sub, Reg::R1, RegImm::Reg(Reg::R2)));
+    parses(stmt, "mul r1 r2", Stmt::Binary(WordSize::B64, BinAlu::Mul, Reg::R1, RegImm::Reg(Reg::R2)));
+    parses(stmt, "div r1 r2", Stmt::Binary(WordSize::B64, BinAlu::Div, Reg::R1, RegImm::Reg(Reg::R2)));
+    parses(stmt, "mod r1 r2", Stmt::Binary(WordSize::B64, BinAlu::Mod, Reg::R1, RegImm::Reg(Reg::R2)));
+    parses(stmt, "and r1 r2", Stmt::Binary(WordSize::B64, BinAlu::And, Reg::R1, RegImm::Reg(Reg::R2)));
+    parses(stmt, "or r1 r2", Stmt::Binary(WordSize::B64, BinAlu::Or, Reg::R1, RegImm::Reg(Reg::R2)));
+    parses(stmt, "xor r1 r2", Stmt::Binary(WordSize::B64, BinAlu::Xor, Reg::R1, RegImm::Reg(Reg::R2)));
+    parses(stmt, "lsh r1 r2", Stmt::Binary(WordSize::B64, BinAlu::Lsh, Reg::R1, RegImm::Reg(Reg::R2)));
+    parses(stmt, "rsh r1 r2", Stmt::Binary(WordSize::B64, BinAlu::Rsh, Reg::R1, RegImm::Reg(Reg::R2)));
+    parses(stmt, "arsh r1 r2", Stmt::Binary(WordSize::B64, BinAlu::Arsh, Reg::R1, RegImm::Reg(Reg::R2)));
 
-    parses(instr, "mov r1 0xfaef", Instr::Binary(WordSize::B64, BinAlu::Mov, Reg::R1, RegImm::Imm(0xfaef)));
-    parses(instr, "add r1 0xfaef", Instr::Binary(WordSize::B64, BinAlu::Add, Reg::R1, RegImm::Imm(0xfaef)));
-    parses(instr, "sub r1 0xfaef", Instr::Binary(WordSize::B64, BinAlu::Sub, Reg::R1, RegImm::Imm(0xfaef)));
-    parses(instr, "mul r1 0xfaef", Instr::Binary(WordSize::B64, BinAlu::Mul, Reg::R1, RegImm::Imm(0xfaef)));
-    parses(instr, "div r1 0xfaef", Instr::Binary(WordSize::B64, BinAlu::Div, Reg::R1, RegImm::Imm(0xfaef)));
-    parses(instr, "mod r1 0xfaef", Instr::Binary(WordSize::B64, BinAlu::Mod, Reg::R1, RegImm::Imm(0xfaef)));
-    parses(instr, "and r1 0xfaef", Instr::Binary(WordSize::B64, BinAlu::And, Reg::R1, RegImm::Imm(0xfaef)));
-    parses(instr, "or r1 0xfaef", Instr::Binary(WordSize::B64, BinAlu::Or, Reg::R1, RegImm::Imm(0xfaef)));
-    parses(instr, "xor r1 0xfaef", Instr::Binary(WordSize::B64, BinAlu::Xor, Reg::R1, RegImm::Imm(0xfaef)));
-    parses(instr, "lsh r1 0xfaef", Instr::Binary(WordSize::B64, BinAlu::Lsh, Reg::R1, RegImm::Imm(0xfaef)));
-    parses(instr, "rsh r1 0xfaef", Instr::Binary(WordSize::B64, BinAlu::Rsh, Reg::R1, RegImm::Imm(0xfaef)));
-    parses(instr, "arsh r1 0xfaef", Instr::Binary(WordSize::B64, BinAlu::Arsh, Reg::R1, RegImm::Imm(0xfaef)));
+    parses(stmt, "mov r1 0xfaef", Stmt::Binary(WordSize::B64, BinAlu::Mov, Reg::R1, RegImm::Imm(0xfaef)));
+    parses(stmt, "add r1 0xfaef", Stmt::Binary(WordSize::B64, BinAlu::Add, Reg::R1, RegImm::Imm(0xfaef)));
+    parses(stmt, "sub r1 0xfaef", Stmt::Binary(WordSize::B64, BinAlu::Sub, Reg::R1, RegImm::Imm(0xfaef)));
+    parses(stmt, "mul r1 0xfaef", Stmt::Binary(WordSize::B64, BinAlu::Mul, Reg::R1, RegImm::Imm(0xfaef)));
+    parses(stmt, "div r1 0xfaef", Stmt::Binary(WordSize::B64, BinAlu::Div, Reg::R1, RegImm::Imm(0xfaef)));
+    parses(stmt, "mod r1 0xfaef", Stmt::Binary(WordSize::B64, BinAlu::Mod, Reg::R1, RegImm::Imm(0xfaef)));
+    parses(stmt, "and r1 0xfaef", Stmt::Binary(WordSize::B64, BinAlu::And, Reg::R1, RegImm::Imm(0xfaef)));
+    parses(stmt, "or r1 0xfaef", Stmt::Binary(WordSize::B64, BinAlu::Or, Reg::R1, RegImm::Imm(0xfaef)));
+    parses(stmt, "xor r1 0xfaef", Stmt::Binary(WordSize::B64, BinAlu::Xor, Reg::R1, RegImm::Imm(0xfaef)));
+    parses(stmt, "lsh r1 0xfaef", Stmt::Binary(WordSize::B64, BinAlu::Lsh, Reg::R1, RegImm::Imm(0xfaef)));
+    parses(stmt, "rsh r1 0xfaef", Stmt::Binary(WordSize::B64, BinAlu::Rsh, Reg::R1, RegImm::Imm(0xfaef)));
+    parses(stmt, "arsh r1 0xfaef", Stmt::Binary(WordSize::B64, BinAlu::Arsh, Reg::R1, RegImm::Imm(0xfaef)));
 
-    parses(instr, "mov32 r1 r2", Instr::Binary(WordSize::B32, BinAlu::Mov, Reg::R1, RegImm::Reg(Reg::R2)));
-    parses(instr, "add32 r1 r2", Instr::Binary(WordSize::B32, BinAlu::Add, Reg::R1, RegImm::Reg(Reg::R2)));
-    parses(instr, "sub32 r1 r2", Instr::Binary(WordSize::B32, BinAlu::Sub, Reg::R1, RegImm::Reg(Reg::R2)));
-    parses(instr, "mul32 r1 r2", Instr::Binary(WordSize::B32, BinAlu::Mul, Reg::R1, RegImm::Reg(Reg::R2)));
-    parses(instr, "div32 r1 r2", Instr::Binary(WordSize::B32, BinAlu::Div, Reg::R1, RegImm::Reg(Reg::R2)));
-    parses(instr, "mod32 r1 r2", Instr::Binary(WordSize::B32, BinAlu::Mod, Reg::R1, RegImm::Reg(Reg::R2)));
-    parses(instr, "and32 r1 r2", Instr::Binary(WordSize::B32, BinAlu::And, Reg::R1, RegImm::Reg(Reg::R2)));
-    parses(instr, "or32 r1 r2", Instr::Binary(WordSize::B32, BinAlu::Or, Reg::R1, RegImm::Reg(Reg::R2)));
-    parses(instr, "xor32 r1 r2", Instr::Binary(WordSize::B32, BinAlu::Xor, Reg::R1, RegImm::Reg(Reg::R2)));
-    parses(instr, "lsh32 r1 r2", Instr::Binary(WordSize::B32, BinAlu::Lsh, Reg::R1, RegImm::Reg(Reg::R2)));
-    parses(instr, "rsh32 r1 r2", Instr::Binary(WordSize::B32, BinAlu::Rsh, Reg::R1, RegImm::Reg(Reg::R2)));
-    parses(instr, "arsh32 r1 r2", Instr::Binary(WordSize::B32, BinAlu::Arsh, Reg::R1, RegImm::Reg(Reg::R2)));
+    parses(stmt, "mov32 r1 r2", Stmt::Binary(WordSize::B32, BinAlu::Mov, Reg::R1, RegImm::Reg(Reg::R2)));
+    parses(stmt, "add32 r1 r2", Stmt::Binary(WordSize::B32, BinAlu::Add, Reg::R1, RegImm::Reg(Reg::R2)));
+    parses(stmt, "sub32 r1 r2", Stmt::Binary(WordSize::B32, BinAlu::Sub, Reg::R1, RegImm::Reg(Reg::R2)));
+    parses(stmt, "mul32 r1 r2", Stmt::Binary(WordSize::B32, BinAlu::Mul, Reg::R1, RegImm::Reg(Reg::R2)));
+    parses(stmt, "div32 r1 r2", Stmt::Binary(WordSize::B32, BinAlu::Div, Reg::R1, RegImm::Reg(Reg::R2)));
+    parses(stmt, "mod32 r1 r2", Stmt::Binary(WordSize::B32, BinAlu::Mod, Reg::R1, RegImm::Reg(Reg::R2)));
+    parses(stmt, "and32 r1 r2", Stmt::Binary(WordSize::B32, BinAlu::And, Reg::R1, RegImm::Reg(Reg::R2)));
+    parses(stmt, "or32 r1 r2", Stmt::Binary(WordSize::B32, BinAlu::Or, Reg::R1, RegImm::Reg(Reg::R2)));
+    parses(stmt, "xor32 r1 r2", Stmt::Binary(WordSize::B32, BinAlu::Xor, Reg::R1, RegImm::Reg(Reg::R2)));
+    parses(stmt, "lsh32 r1 r2", Stmt::Binary(WordSize::B32, BinAlu::Lsh, Reg::R1, RegImm::Reg(Reg::R2)));
+    parses(stmt, "rsh32 r1 r2", Stmt::Binary(WordSize::B32, BinAlu::Rsh, Reg::R1, RegImm::Reg(Reg::R2)));
+    parses(stmt, "arsh32 r1 r2", Stmt::Binary(WordSize::B32, BinAlu::Arsh, Reg::R1, RegImm::Reg(Reg::R2)));
 
-    parses(instr, "mov32 r1 0xfaef", Instr::Binary(WordSize::B32, BinAlu::Mov, Reg::R1, RegImm::Imm(0xfaef)));
-    parses(instr, "add32 r1 0xfaef", Instr::Binary(WordSize::B32, BinAlu::Add, Reg::R1, RegImm::Imm(0xfaef)));
-    parses(instr, "sub32 r1 0xfaef", Instr::Binary(WordSize::B32, BinAlu::Sub, Reg::R1, RegImm::Imm(0xfaef)));
-    parses(instr, "mul32 r1 0xfaef", Instr::Binary(WordSize::B32, BinAlu::Mul, Reg::R1, RegImm::Imm(0xfaef)));
-    parses(instr, "div32 r1 0xfaef", Instr::Binary(WordSize::B32, BinAlu::Div, Reg::R1, RegImm::Imm(0xfaef)));
-    parses(instr, "mod32 r1 0xfaef", Instr::Binary(WordSize::B32, BinAlu::Mod, Reg::R1, RegImm::Imm(0xfaef)));
-    parses(instr, "and32 r1 0xfaef", Instr::Binary(WordSize::B32, BinAlu::And, Reg::R1, RegImm::Imm(0xfaef)));
-    parses(instr, "or32 r1 0xfaef", Instr::Binary(WordSize::B32, BinAlu::Or, Reg::R1, RegImm::Imm(0xfaef)));
-    parses(instr, "xor32 r1 0xfaef", Instr::Binary(WordSize::B32, BinAlu::Xor, Reg::R1, RegImm::Imm(0xfaef)));
-    parses(instr, "lsh32 r1 0xfaef", Instr::Binary(WordSize::B32, BinAlu::Lsh, Reg::R1, RegImm::Imm(0xfaef)));
-    parses(instr, "rsh32 r1 0xfaef", Instr::Binary(WordSize::B32, BinAlu::Rsh, Reg::R1, RegImm::Imm(0xfaef)));
-    parses(instr, "arsh32 r1 0xfaef", Instr::Binary(WordSize::B32, BinAlu::Arsh, Reg::R1, RegImm::Imm(0xfaef)));
+    parses(stmt, "mov32 r1 0xfaef", Stmt::Binary(WordSize::B32, BinAlu::Mov, Reg::R1, RegImm::Imm(0xfaef)));
+    parses(stmt, "add32 r1 0xfaef", Stmt::Binary(WordSize::B32, BinAlu::Add, Reg::R1, RegImm::Imm(0xfaef)));
+    parses(stmt, "sub32 r1 0xfaef", Stmt::Binary(WordSize::B32, BinAlu::Sub, Reg::R1, RegImm::Imm(0xfaef)));
+    parses(stmt, "mul32 r1 0xfaef", Stmt::Binary(WordSize::B32, BinAlu::Mul, Reg::R1, RegImm::Imm(0xfaef)));
+    parses(stmt, "div32 r1 0xfaef", Stmt::Binary(WordSize::B32, BinAlu::Div, Reg::R1, RegImm::Imm(0xfaef)));
+    parses(stmt, "mod32 r1 0xfaef", Stmt::Binary(WordSize::B32, BinAlu::Mod, Reg::R1, RegImm::Imm(0xfaef)));
+    parses(stmt, "and32 r1 0xfaef", Stmt::Binary(WordSize::B32, BinAlu::And, Reg::R1, RegImm::Imm(0xfaef)));
+    parses(stmt, "or32 r1 0xfaef", Stmt::Binary(WordSize::B32, BinAlu::Or, Reg::R1, RegImm::Imm(0xfaef)));
+    parses(stmt, "xor32 r1 0xfaef", Stmt::Binary(WordSize::B32, BinAlu::Xor, Reg::R1, RegImm::Imm(0xfaef)));
+    parses(stmt, "lsh32 r1 0xfaef", Stmt::Binary(WordSize::B32, BinAlu::Lsh, Reg::R1, RegImm::Imm(0xfaef)));
+    parses(stmt, "rsh32 r1 0xfaef", Stmt::Binary(WordSize::B32, BinAlu::Rsh, Reg::R1, RegImm::Imm(0xfaef)));
+    parses(stmt, "arsh32 r1 0xfaef", Stmt::Binary(WordSize::B32, BinAlu::Arsh, Reg::R1, RegImm::Imm(0xfaef)));
 
-    parses(instr, "mov32 r1, - 0b1001", Instr::Binary(WordSize::B32, BinAlu::Mov, Reg::R1, RegImm::Imm(-0b1001)));
-    parses(instr, "or32 r1, r2", Instr::Binary(WordSize::B32, BinAlu::Or, Reg::R1, RegImm::Reg(Reg::R2)));
-    parses(instr, "div32 r1,+0b1001", Instr::Binary(WordSize::B32, BinAlu::Div, Reg::R1, RegImm::Imm(0b1001)));
-    parses(instr, "mul32 r1,r2", Instr::Binary(WordSize::B32, BinAlu::Mul, Reg::R1, RegImm::Reg(Reg::R2)));
-    parses(instr, "add64 r1, r2", Instr::Binary(WordSize::B64, BinAlu::Add, Reg::R1, RegImm::Reg(Reg::R2)));
+    parses(stmt, "mov32 r1, - 0b1001", Stmt::Binary(WordSize::B32, BinAlu::Mov, Reg::R1, RegImm::Imm(-0b1001)));
+    parses(stmt, "or32 r1, r2", Stmt::Binary(WordSize::B32, BinAlu::Or, Reg::R1, RegImm::Reg(Reg::R2)));
+    parses(stmt, "div32 r1,+0b1001", Stmt::Binary(WordSize::B32, BinAlu::Div, Reg::R1, RegImm::Imm(0b1001)));
+    parses(stmt, "mul32 r1,r2", Stmt::Binary(WordSize::B32, BinAlu::Mul, Reg::R1, RegImm::Reg(Reg::R2)));
+    parses(stmt, "add64 r1, r2", Stmt::Binary(WordSize::B64, BinAlu::Add, Reg::R1, RegImm::Reg(Reg::R2)));
 
-    rejects(instr, "mov");
-    rejects(instr, "mov,");
-    rejects(instr, "mov r1");
-    rejects(instr, "mov r1,");
-    rejects(instr, "mov32, r1, r2");
-    rejects(instr, "mov32, r1, r2");
-    rejects(instr, "mov32 r1,, 0xfaef");
-    rejects(instr, "mov32r1 0xfaef");
-    rejects(instr, "movr1 0xfaef");
-    rejects(instr, "mov r1r2");
-    rejects(instr, "mov 32 r1 r2");
-    rejects(instr, "mov 0 r2");
+    rejects(stmt, "mov");
+    rejects(stmt, "mov,");
+    rejects(stmt, "mov r1");
+    rejects(stmt, "mov r1,");
+    rejects(stmt, "mov32, r1, r2");
+    rejects(stmt, "mov32, r1, r2");
+    rejects(stmt, "mov32 r1,, 0xfaef");
+    rejects(stmt, "mov32r1 0xfaef");
+    rejects(stmt, "movr1 0xfaef");
+    rejects(stmt, "mov r1r2");
+    rejects(stmt, "mov 32 r1 r2");
+    rejects(stmt, "mov 0 r2");
 }
 
 #[test]
 fn load_instructions() {
-    parses(instr, "ldxb r0  [r1]", Instr::Load(WordSize::B8, Reg::R0, MemRef(Reg::R1, None)));
-    parses(instr, "ldxh r0  [r1]", Instr::Load(WordSize::B16, Reg::R0, MemRef(Reg::R1, None)));
-    parses(instr, "ldxw r0  [r1]", Instr::Load(WordSize::B32, Reg::R0, MemRef(Reg::R1, None)));
-    parses(instr, "ldxdw r0 [r1]", Instr::Load(WordSize::B64, Reg::R0, MemRef(Reg::R1, None)));
-    parses(instr, "lddw r0, 123", Instr::LoadImm(Reg::R0, 123));
+    parses(stmt, "ldxb r0  [r1]", Stmt::Load(WordSize::B8, Reg::R0, MemRef(Reg::R1, None)));
+    parses(stmt, "ldxh r0  [r1]", Stmt::Load(WordSize::B16, Reg::R0, MemRef(Reg::R1, None)));
+    parses(stmt, "ldxw r0  [r1]", Stmt::Load(WordSize::B32, Reg::R0, MemRef(Reg::R1, None)));
+    parses(stmt, "ldxdw r0 [r1]", Stmt::Load(WordSize::B64, Reg::R0, MemRef(Reg::R1, None)));
+    parses(stmt, "lddw r0, 123", Stmt::LoadImm(Reg::R0, 123));
 
-    rejects(instr, "ld r0 [r1]");
-    rejects(instr, "ldx r0 [r1]");
+    rejects(stmt, "ld r0 [r1]");
+    rejects(stmt, "ldx r0 [r1]");
 }
 
 #[test]
 fn store_instructions() {
-    parses(instr, "stb  [r0] 123", Instr::Store(WordSize::B8, MemRef(Reg::R0, None), RegImm::Imm(123)));
-    parses(instr, "sth  [r0] 123", Instr::Store(WordSize::B16, MemRef(Reg::R0, None), RegImm::Imm(123)));
-    parses(instr, "stw  [r0] 123", Instr::Store(WordSize::B32, MemRef(Reg::R0, None), RegImm::Imm(123)));
-    parses(instr, "stdw [r0] 123", Instr::Store(WordSize::B64, MemRef(Reg::R0, None), RegImm::Imm(123)));
+    parses(stmt, "stb  [r0] 123", Stmt::Store(WordSize::B8, MemRef(Reg::R0, None), RegImm::Imm(123)));
+    parses(stmt, "sth  [r0] 123", Stmt::Store(WordSize::B16, MemRef(Reg::R0, None), RegImm::Imm(123)));
+    parses(stmt, "stw  [r0] 123", Stmt::Store(WordSize::B32, MemRef(Reg::R0, None), RegImm::Imm(123)));
+    parses(stmt, "stdw [r0] 123", Stmt::Store(WordSize::B64, MemRef(Reg::R0, None), RegImm::Imm(123)));
 
-    parses(instr, "stxb  [r0] r1", Instr::Store(WordSize::B8, MemRef(Reg::R0, None), RegImm::Reg(Reg::R1)));
-    parses(instr, "stxh  [r0] r1", Instr::Store(WordSize::B16, MemRef(Reg::R0, None), RegImm::Reg(Reg::R1)));
-    parses(instr, "stxw  [r0] r1", Instr::Store(WordSize::B32, MemRef(Reg::R0, None), RegImm::Reg(Reg::R1)));
-    parses(instr, "stxdw [r0] r1", Instr::Store(WordSize::B64, MemRef(Reg::R0, None), RegImm::Reg(Reg::R1)));
+    parses(stmt, "stxb  [r0] r1", Stmt::Store(WordSize::B8, MemRef(Reg::R0, None), RegImm::Reg(Reg::R1)));
+    parses(stmt, "stxh  [r0] r1", Stmt::Store(WordSize::B16, MemRef(Reg::R0, None), RegImm::Reg(Reg::R1)));
+    parses(stmt, "stxw  [r0] r1", Stmt::Store(WordSize::B32, MemRef(Reg::R0, None), RegImm::Reg(Reg::R1)));
+    parses(stmt, "stxdw [r0] r1", Stmt::Store(WordSize::B64, MemRef(Reg::R0, None), RegImm::Reg(Reg::R1)));
 
-    rejects(instr, "st [r0] r1");
-    rejects(instr, "stx [r0] r1");
+    rejects(stmt, "st [r0] r1");
+    rejects(stmt, "stx [r0] r1");
 }
 
 #[test]
 fn jump_instructions() {
-    parses(instr, "ja label", Instr::Jmp("label".to_owned()));
-    parses(instr, "jeq r0 0 l", Instr::Jcc(Cc::Eq, Reg::R0, RegImm::Imm(0), "l".to_owned()));
-    parses(instr, "jeq r0 r1 l", Instr::Jcc(Cc::Eq, Reg::R0, RegImm::Reg(Reg::R1), "l".to_owned()));
+    parses(stmt, "ja label", Stmt::Jmp("label".to_owned()));
+    parses(stmt, "jeq r0 0 l", Stmt::Jcc(Cc::Eq, Reg::R0, RegImm::Imm(0), "l".to_owned()));
+    parses(stmt, "jeq r0 r1 l", Stmt::Jcc(Cc::Eq, Reg::R0, RegImm::Reg(Reg::R1), "l".to_owned()));
 
-    parses(instr, "jgt r0 0 l", Instr::Jcc(Cc::Gt, Reg::R0, RegImm::Imm(0), "l".to_owned()));
-    parses(instr, "jge r0 0 l", Instr::Jcc(Cc::Ge, Reg::R0, RegImm::Imm(0), "l".to_owned()));
-    parses(instr, "jlt r0 0 l", Instr::Jcc(Cc::Lt, Reg::R0, RegImm::Imm(0), "l".to_owned()));
-    parses(instr, "jle r0 0 l", Instr::Jcc(Cc::Le, Reg::R0, RegImm::Imm(0), "l".to_owned()));
-    parses(instr, "jset r0 0 l", Instr::Jcc(Cc::Set, Reg::R0, RegImm::Imm(0), "l".to_owned()));
-    parses(instr, "jne r0 0 l", Instr::Jcc(Cc::Ne, Reg::R0, RegImm::Imm(0), "l".to_owned()));
-    parses(instr, "jsgt r0 0 l", Instr::Jcc(Cc::Sgt, Reg::R0, RegImm::Imm(0), "l".to_owned()));
-    parses(instr, "jsge r0 0 l", Instr::Jcc(Cc::Sge, Reg::R0, RegImm::Imm(0), "l".to_owned()));
-    parses(instr, "jslt r0 0 l", Instr::Jcc(Cc::Slt, Reg::R0, RegImm::Imm(0), "l".to_owned()));
-    parses(instr, "jsle r0 0 l", Instr::Jcc(Cc::Sle, Reg::R0, RegImm::Imm(0), "l".to_owned()));
+    parses(stmt, "jgt r0 0 l", Stmt::Jcc(Cc::Gt, Reg::R0, RegImm::Imm(0), "l".to_owned()));
+    parses(stmt, "jge r0 0 l", Stmt::Jcc(Cc::Ge, Reg::R0, RegImm::Imm(0), "l".to_owned()));
+    parses(stmt, "jlt r0 0 l", Stmt::Jcc(Cc::Lt, Reg::R0, RegImm::Imm(0), "l".to_owned()));
+    parses(stmt, "jle r0 0 l", Stmt::Jcc(Cc::Le, Reg::R0, RegImm::Imm(0), "l".to_owned()));
+    parses(stmt, "jset r0 0 l", Stmt::Jcc(Cc::Set, Reg::R0, RegImm::Imm(0), "l".to_owned()));
+    parses(stmt, "jne r0 0 l", Stmt::Jcc(Cc::Ne, Reg::R0, RegImm::Imm(0), "l".to_owned()));
+    parses(stmt, "jsgt r0 0 l", Stmt::Jcc(Cc::Sgt, Reg::R0, RegImm::Imm(0), "l".to_owned()));
+    parses(stmt, "jsge r0 0 l", Stmt::Jcc(Cc::Sge, Reg::R0, RegImm::Imm(0), "l".to_owned()));
+    parses(stmt, "jslt r0 0 l", Stmt::Jcc(Cc::Slt, Reg::R0, RegImm::Imm(0), "l".to_owned()));
+    parses(stmt, "jsle r0 0 l", Stmt::Jcc(Cc::Sle, Reg::R0, RegImm::Imm(0), "l".to_owned()));
 
-    rejects(instr, "jeq 0 r1 l");
+    rejects(stmt, "jeq 0 r1 l");
 }
 
 #[test]
@@ -434,7 +434,7 @@ fn assertions() {
 
 #[test]
 fn gcd() {
-    parses(module, include_str!("../../test_asm/exit.asm"), vec![Line::Instr(Instr::Exit)]);
+    parses(module, include_str!("../../test_asm/exit.asm"), vec![Line::Stmtit)]);
     accepts(module, include_str!("../../test_asm/gcd.asm"));
     parses(
         module,
@@ -487,39 +487,38 @@ fn gcd() {
                 exit
         ",
         vec![
-            Line::Instr(Instr::Binary(WordSize::B64, BinAlu::Mov, Reg::R0, RegImm::Imm(0))),
-            Line::Instr(Instr::Binary(WordSize::B64, BinAlu::Mov, Reg::R3, RegImm::Imm(0))),
-            Line::Instr(Instr::Binary(WordSize::B64, BinAlu::Mov, Reg::R5, RegImm::Imm(0))),
-            Line::Instr(Instr::Binary(WordSize::B64, BinAlu::Mov, Reg::R6, RegImm::Imm(0))),
+            Line::Instr(Stmt::Binary(WordSize::B64, BinAlu::Mov, Reg::R0, RegImm::Imm(0))),
+            Line::Instr(Stmt::Binary(WordSize::B64, BinAlu::Mov, Reg::R3, RegImm::Imm(0))),
+            Line::Instr(Stmt::Binary(WordSize::B64, BinAlu::Mov, Reg::R5, RegImm::Imm(0))),
+            Line::Instr(Stmt::Binary(WordSize::B64, BinAlu::Mov, Reg::R6, RegImm::Imm(0))),
             Line::Label("outer".to_owned()),
-            Line::Instr(Instr::Jcc(Cc::Eq, Reg::R3, RegImm::Reg(Reg::R2), "submit".to_owned())),
-            Line::Instr(Instr::Binary(WordSize::B64, BinAlu::Mov, Reg::R4, RegImm::Reg(Reg::R1))),
-            Line::Instr(Instr::Binary(WordSize::B64, BinAlu::Add, Reg::R4, RegImm::Reg(Reg::R3))),
-            Line::Instr(Instr::Load(WordSize::B8, Reg::R4, MemRef(Reg::R4, None))),
-            Line::Instr(Instr::Binary(WordSize::B64, BinAlu::Add, Reg::R3, RegImm::Imm(1))),
-            Line::Instr(Instr::Jcc(Cc::Eq, Reg::R4, RegImm::Imm(10), "submit".to_owned())),
+            Line::Instr(Stmt::Jcc(Cc::Eq, Reg::R3, RegImm::Reg(Reg::R2), "submit".to_owned())),
+            Line::Instr(Stmt::Binary(WordSize::B64, BinAlu::Mov, Reg::R4, RegImm::Reg(Reg::R1))),
+            Line::Instr(Stmt::Binary(WordSize::B64, BinAlu::Add, Reg::R4, RegImm::Reg(Reg::R3))),
+            Line::Instr(Stmt::Load(WordSize::B8, Reg::R4, MemRef(Reg::R4, None))),
+            Line::Instr(Stmt::Binary(WordSize::B64, BinAlu::Add, Reg::R3, RegImm::Imm(1))),
+            Line::Instr(Stmt::Jcc(Cc::Eq, Reg::R4, RegImm::Imm(10), "submit".to_owned())),
             Line::Label("inner".to_owned()),
-            Line::Instr(Instr::Binary(WordSize::B64, BinAlu::Mul, Reg::R5, RegImm::Imm(10))),
-            Line::Instr(Instr::Binary(WordSize::B64, BinAlu::Add, Reg::R5, RegImm::Reg(Reg::R4))),
-            Line::Instr(Instr::Binary(WordSize::B64, BinAlu::Sub, Reg::R5, RegImm::Imm(48))),
-            Line::Instr(Instr::Binary(WordSize::B64, BinAlu::Mov, Reg::R4, RegImm::Reg(Reg::R1))),
-            Line::Instr(Instr::Binary(WordSize::B64, BinAlu::Add, Reg::R4, RegImm::Reg(Reg::R3))),
-            Line::Instr(Instr::Load(WordSize::B8, Reg::R4, MemRef(Reg::R4, None))),
-            Line::Instr(Instr::Binary(WordSize::B64, BinAlu::Add, Reg::R3, RegImm::Imm(1))),
-            Line::Instr(Instr::Jcc(Cc::Ne, Reg::R4, RegImm::Imm(10), "inner".to_owned())),
-            Line::Instr(Instr::Binary(WordSize::B64, BinAlu::Add, Reg::R6, RegImm::Reg(Reg::R5))),
-            Line::Instr(Instr::Binary(WordSize::B64, BinAlu::Mov, Reg::R5, RegImm::Imm(0))),
-            Line::Instr(Instr::Jmp("outer".to_owned())),
+            Line::Instr(Stmt::Binary(WordSize::B64, BinAlu::Mul, Reg::R5, RegImm::Imm(10))),
+            Line::Instr(Stmt::Binary(WordSize::B64, BinAlu::Add, Reg::R5, RegImm::Reg(Reg::R4))),
+            Line::Instr(Stmt::Binary(WordSize::B64, BinAlu::Sub, Reg::R5, RegImm::Imm(48))),
+            Line::Instr(Stmt::Binary(WordSize::B64, BinAlu::Mov, Reg::R4, RegImm::Reg(Reg::R1))),
+            Line::Instr(Stmt::Binary(WordSize::B64, BinAlu::Add, Reg::R4, RegImm::Reg(Reg::R3))),
+            Line::Instr(Stmt::Load(WordSize::B8, Reg::R4, MemRef(Reg::R4, None))),
+            Line::Instr(Stmt::Binary(WordSize::B64, BinAlu::Add, Reg::R3, RegImm::Imm(1))),
+            Line::Instr(Stmt::Jcc(Cc::Ne, Reg::R4, RegImm::Imm(10), "inner".to_owned())),
+            Line::Instr(Stmt::Binary(WordSize::B64, BinAlu::Add, Reg::R6, RegImm::Reg(Reg::R5))),
+            Line::Instr(Stmt::Binary(WordSize::B64, BinAlu::Mov, Reg::R5, RegImm::Imm(0))),
+            Line::Instr(Stmt::Jmp("outer".to_owned())),
             Line::Label("submit".to_owned()),
-            Line::Instr(Instr::Jcc(Cc::Gt, Reg::R0, RegImm::Reg(Reg::R6), "skip".to_owned())),
-            Line::Instr(Instr::Binary(WordSize::B64, BinAlu::Mov, Reg::R0, RegImm::Reg(Reg::R6))),
+            Line::Instr(Stmt::Jcc(Cc::Gt, Reg::R0, RegImm::Reg(Reg::R6), "skip".to_owned())),
+            Line::Instr(Stmt::Binary(WordSize::B64, BinAlu::Mov, Reg::R0, RegImm::Reg(Reg::R6))),
             Line::Label("skip".to_owned()),
-            Line::Instr(Instr::Binary(WordSize::B64, BinAlu::Mov, Reg::R6, RegImm::Imm(0))),
-            Line::Instr(Instr::Jcc(Cc::Eq, Reg::R3, RegImm::Reg(Reg::R2), "end".to_owned())),
-            Line::Instr(Instr::Jmp("outer".to_owned())),
+            Line::Instr(Stmt::Binary(WordSize::B64, BinAlu::Mov, Reg::R6, RegImm::Imm(0))),
+            Line::Instr(Stmt::Jcc(Cc::Eq, Reg::R3, RegImm::Reg(Reg::R2), "end".to_owned())),
+            Line::Instr(Stmt::Jmp("outer".to_owned())),
             Line::Label("end".to_owned()),
-            Line::Instr(Instr::Exit),
-        ],
+            Line::Instr(Stmt        ],
     );
 }
 

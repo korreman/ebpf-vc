@@ -66,16 +66,22 @@ pub type Label = String;
 pub struct MemRef(pub Reg, pub Offset);
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum Instr {
+pub enum Stmt {
+    Assert(Formula),
     Unary(WordSize, UnAlu, Reg),
     Binary(WordSize, BinAlu, Reg, RegImm),
     Store(WordSize, MemRef, RegImm),
     Load(WordSize, Reg, MemRef),
     LoadImm(Reg, Imm),
     LoadMapFd(Reg, Imm),
+    Call(Imm),
+}
+
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Cont {
     Jmp(Label),
     Jcc(Cc, Reg, RegImm, Label),
-    Call(Imm),
     Exit,
 }
 
@@ -116,7 +122,7 @@ pub enum Formula {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum FormulaLine {
+pub enum Logic {
     Assert(Formula),
     Require(Formula),
 }
@@ -124,8 +130,9 @@ pub enum FormulaLine {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Line {
     Label(Label),
-    Formula(FormulaLine),
-    Instr(Instr),
+    Logic(Logic),
+    Stmt(Stmt),
+    Cont(Cont),
 }
 
 pub struct Module {

@@ -131,15 +131,15 @@ fn bin_alu(i: &str) -> Res<BinAlu> {
     ))(i)
 }
 
-fn unary(i: &str) -> Res<Instr> {
+fn unary(i: &str) -> Res<Stmt> {
     instr!(pair(un_alu, alu_size), reg)
-        .map(|((op, size), reg)| Instr::Unary(size, op, reg))
+        .map(|((op, size), reg)| Stmt::Unary(size, op, reg))
         .parse(i)
 }
 
-fn binary(i: &str) -> Res<Instr> {
+fn binary(i: &str) -> Res<Stmt> {
     instr!(pair(bin_alu, alu_size), reg, reg_imm)
-        .map(|((op, size), reg, reg_imm)| Instr::Binary(size, op, reg, reg_imm))
+        .map(|((op, size), reg, reg_imm)| Stmt::Binary(size, op, reg, reg_imm))
         .parse(i)
 }
 
@@ -160,24 +160,24 @@ fn mem_ref(i: &str) -> Res<MemRef> {
     delimited(terminated(char('['), space0), inner, char(']'))(i)
 }
 
-fn load(i: &str) -> Res<Instr> {
+fn load(i: &str) -> Res<Stmt> {
     map(
         instr!(preceded(tag("ldx"), mem_size), reg, mem_ref),
-        |(size, reg, mem_ref)| Instr::Load(size, reg, mem_ref),
+        |(size, reg, mem_ref)| Stmt::Load(size, reg, mem_ref),
     )(i)
 }
 
-fn store(i: &str) -> Res<Instr> {
+fn store(i: &str) -> Res<Stmt> {
     instr!(
         preceded(alt((tag("stx"), tag("st"))), mem_size),
         mem_ref,
         reg_imm
     )
-    .map(|(size, mref, reg_imm)| Instr::Store(size, mref, reg_imm))
+    .map(|(size, mref, reg_imm)| Stmt::Store(size, mref, reg_imm))
     .parse(i)
 }
 
-fn jcc(i: &str) -> Res<Instr> {
+fn cont(i: &str) -> Res<Cont> {
     let cc = alt((
         value(Cc::Eq, tag("eq")),
         value(Cc::Gt, tag("gt")),
@@ -191,29 +191,32 @@ fn jcc(i: &str) -> Res<Instr> {
         value(Cc::Slt, tag("slt")),
         value(Cc::Sle, tag("sle")),
     ));
-    map(
+    let jcc = map(
         instr!(
             preceded(char('j'), cc),
             reg,
             reg_imm,
             ident.map(|id| id.to_owned())
         ),
-        |(cc, lhs, rhs, target)| Instr::Jcc(cc, lhs, rhs, target),
-    )(i)
-}
+        |(cc, lhs, rhs, target)| Cont::Jcc(cc, lhs, rhs, target),
+    );
 
-fn instr(i: &str) -> Res<Instr> {
     let jmp = map(
         preceded(pair(tag("ja"), space1), ident.map(|id| id.to_owned())),
-        Instr::Jmp,
+        Cont::Jmp,
     );
-    let call = map(preceded(pair(tag("call"), space1), imm), Instr::Call);
+    let exit = value(Cont::Exit, tag("exit"));
+
+    alt((exit, jmp, jcc))(i)
+}
+
+fn stmt(i: &str) -> Res<Stmt> {
+    let call = map(preceded(pair(tag("call"), space1), imm), Stmt::Call);
     let load_imm = map(instr!(tag("lddw"), reg, imm), |(_, reg, imm)| {
-        Instr::LoadImm(reg, imm)
+        Stmt::LoadImm(reg, imm)
     });
-    let exit = value(Instr::Exit, tag("exit"));
     // Missing: LoadMapFd
-    alt((unary, binary, load, load_imm, store, jcc, jmp, call, exit))(i)
+    alt((unary, binary, load, load_imm, store, call))(i)
 }
 
 // Assertion parsing
@@ -296,17 +299,17 @@ fn formula(i: &str) -> Res<Formula> {
     alt((parenthesized, val, not, binary, quant, rel, is_buffer))(i)
 }
 
-fn formula_line(i: &str) -> Res<FormulaLine> {
+fn formula_line(i: &str) -> Res<Logic> {
     preceded(
         pair(tag(";#"), space0),
         alt((
             preceded(
                 pair(tag("assert"), space0),
-                map(formula, FormulaLine::Assert),
+                map(formula, Logic::Assert),
             ),
             preceded(
                 pair(alt((tag("require"), tag("req"))), space0),
-                map(formula, FormulaLine::Require),
+                map(formula, Logic::Require),
             ),
         )),
     )(i)
@@ -338,8 +341,9 @@ fn label(i: &str) -> Res<Label> {
 fn line(i: &str) -> Res<Line> {
     alt((
         label.map(Line::Label),
-        formula_line.map(Line::Formula),
-        instr.map(Line::Instr),
+        formula_line.map(Line::Logic),
+        stmt.map(Line::Stmt),
+        cont.map(Line::Cont),
     ))(i)
 }
 
