@@ -11,9 +11,9 @@ enum BlockStatus {
     PreCond(Formula),
 }
 
-pub fn vc(module: Cfg, f: &mut FormulaBuilder) -> Vec<Formula> {
+pub fn vc(module: Cfg, f: &mut FormulaBuilder) -> Vec<(String, Formula)> {
     // Stores results.
-    let mut verif_conds: Vec<Formula> = Vec::new();
+    let mut verif_conds: Vec<(String, Formula)> = Vec::new();
 
     // Stores cached pre-conditions for each block.
     // Also used to track which blocks have already been visited.
@@ -102,7 +102,7 @@ pub fn vc(module: Cfg, f: &mut FormulaBuilder) -> Vec<Formula> {
         if let Some(require) = require {
             // If the block has a requirement,
             // add a VC requiring that the requirement implies the WP result.
-            verif_conds.push(f.implies(require.clone(), wp_result));
+            verif_conds.push((label.clone(), f.implies(require.clone(), wp_result)));
             pre_conds.insert(label, BlockStatus::PreCond(require.clone()));
         } else {
             // Otherwise, cache the WP result for the block.
@@ -111,10 +111,18 @@ pub fn vc(module: Cfg, f: &mut FormulaBuilder) -> Vec<Formula> {
     }
 
     // Add the pre-condition of the starting block as a VC.
-    verif_conds.push(match &pre_conds[&module.start] {
-        BlockStatus::PreCond(c) => f.implies(module.requires, c.clone()),
-        _ => panic!("starting block is never processed"),
-    });
+    let entry_name = if module.start == "@0" {
+        "entry".to_owned()
+    } else {
+        module.start.clone()
+    };
+    verif_conds.push((
+        entry_name,
+        match &pre_conds[&module.start] {
+            BlockStatus::PreCond(c) => f.implies(module.requires, c.clone()),
+            _ => panic!("starting block is never processed"),
+        },
+    ));
     verif_conds
 }
 
@@ -148,7 +156,10 @@ fn wp(f: &mut FormulaBuilder, instrs: &[Stmt], mut cond: Formula) -> Formula {
                 let valid_addr = valid_addr(f, *size, mem_ref);
                 let (_, v_id) = f.var(String::from("v"));
                 let (_, t_id) = f.reg(*dst);
-                let replace_reg = f.forall(v_id.clone(), f.replace(&t_id, &v_id, cond));
+                let replace_reg = match f.replace(&t_id, &v_id, &cond) {
+                    Some(x) => f.forall(v_id.clone(), x),
+                    None => cond,
+                };
                 cond = f.and(valid_addr, replace_reg);
             }
             Stmt::Assert(a) => {
@@ -162,10 +173,10 @@ fn wp(f: &mut FormulaBuilder, instrs: &[Stmt], mut cond: Formula) -> Formula {
 
 fn assign(f: &mut FormulaBuilder, target: &Ident, e: Expr, cond: Formula) -> Formula {
     let (v, v_id) = f.var(String::from("v"));
-    f.forall(
-        v_id.clone(),
-        f.implies(f.eq(v, e), f.replace(target, &v_id, cond)),
-    )
+    match f.replace(target, &v_id, &cond) {
+        Some(x) => f.forall(v_id.clone(), f.implies(f.eq(v, e), x)),
+        None => cond,
+    }
 }
 
 fn valid_addr(f: &mut FormulaBuilder, size: WordSize, MemRef(reg, offset): &MemRef) -> Formula {
@@ -191,10 +202,10 @@ fn valid_addr(f: &mut FormulaBuilder, size: WordSize, MemRef(reg, offset): &MemR
                 f.is_buffer(ptr_id, sz),
                 //f.and(
                 //    f.eq(f.binop(BinAlu::Mod, addr.clone(), f.val(bytes)), f.val(0)),
-                    f.and(
-                        f.rel(Cc::Le, ptr, addr.clone()),
-                        f.rel(Cc::Lt, addr, upper_bound),
-                    ),
+                f.and(
+                    f.rel(Cc::Le, ptr, addr.clone()),
+                    f.rel(Cc::Lt, addr, upper_bound),
+                ),
                 //),
             ),
         ),

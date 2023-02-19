@@ -54,50 +54,88 @@ impl FormulaBuilder {
         Formula::Quant(QType::Exists, ident, Box::new(f))
     }
 
-    pub fn replace(&self, prev: &Ident, new: &Ident, mut f: Formula) -> Formula {
-        match &mut f {
-            Formula::Not(inner) => **inner = self.replace(prev, new, *inner.clone()),
-            Formula::Bin(_, fs) => {
-                fs.0 = self.replace(prev, new, fs.0.clone());
-                fs.1 = self.replace(prev, new, fs.1.clone());
+    pub fn replace(&self, prev: &Ident, new: &Ident, f: &Formula) -> Option<Formula> {
+        match f {
+            Formula::Not(inner) => {
+                let res = self.replace(prev, new, inner)?;
+                Some(Formula::Not(Box::new(res)))
             }
-            Formula::Quant(_, qvar, inner) => {
-                if prev != qvar {
-                    **inner = self.replace(prev, new, *inner.clone());
+            Formula::Bin(op, fs) => {
+                let a = self.replace(prev, new, &fs.0);
+                let b = self.replace(prev, new, &fs.1);
+                if a.is_some() || b.is_some() {
+                    Some(Formula::Bin(
+                        *op,
+                        Box::new((a.unwrap_or(fs.0.clone()), b.unwrap_or(fs.1.clone()))),
+                    ))
+                } else {
+                    None
                 }
             }
-            Formula::Rel(_, e1, e2) => {
-                *e1 = self.replace_expr(prev, new, e1.clone());
-                *e2 = self.replace_expr(prev, new, e2.clone());
+            Formula::Quant(qtype, qvar, inner) => {
+                if prev != qvar {
+                    let res = self.replace(prev, new, inner)?;
+                    Some(Formula::Quant(*qtype, qvar.clone(), Box::new(res)))
+                } else {
+                    None
+                }
+            }
+            Formula::Rel(r, e1, e2) => {
+                let a = self.replace_expr(prev, new, e1);
+                let b = self.replace_expr(prev, new, e2);
+                if a.is_some() || b.is_some() {
+                    Some(Formula::Rel(
+                        *r,
+                        a.unwrap_or(e1.clone()),
+                        b.unwrap_or(e2.clone()),
+                    ))
+                } else {
+                    None
+                }
             }
             Formula::IsBuffer(ptr, sz) => {
-                if ptr == prev {
-                    *ptr = new.clone();
+                let new_ptr = if ptr == prev { Some(new.clone()) } else { None };
+                let new_sz = self.replace_expr(prev, new, sz);
+                if new_ptr.is_some() || new_sz.is_some() {
+                    Some(Formula::IsBuffer(
+                        new_ptr.unwrap_or(ptr.clone()),
+                        new_sz.unwrap_or(sz.clone()),
+                    ))
+                } else {
+                    None
                 }
-                *sz = self.replace_expr(prev, new, sz.clone());
             }
-            Formula::Val(_) => (),
+            Formula::Val(_) => None,
         }
-        f
     }
 
-    pub fn replace_expr(&self, prev: &Ident, new: &Ident, mut e: Expr) -> Expr {
-        match &mut e {
+    pub fn replace_expr(&self, prev: &Ident, new: &Ident, e: &Expr) -> Option<Expr> {
+        match e {
             Expr::Var(x) => {
                 if x == prev {
-                    *x = new.clone();
+                    Some(Expr::Var(new.clone()))
+                } else {
+                    None
                 }
             }
-            Expr::Unary(_, inner) => {
-                **inner = self.replace_expr(prev, new, *inner.clone());
+            Expr::Unary(op, inner) => {
+                let res = self.replace_expr(prev, new, inner)?;
+                Some(Expr::Unary(*op, Box::new(res)))
             }
-            Expr::Binary(_, es) => {
-                es.0 = self.replace_expr(prev, new, es.0.clone());
-                es.1 = self.replace_expr(prev, new, es.1.clone());
+            Expr::Binary(op, es) => {
+                let a = self.replace_expr(prev, new, &es.0);
+                let b = self.replace_expr(prev, new, &es.1);
+                if a.is_some() || b.is_some() {
+                    Some(Expr::Binary(
+                        *op,
+                        Box::new((a.unwrap_or(es.0.clone()), b.unwrap_or(es.1.clone()))),
+                    ))
+                } else {
+                    None
+                }
             }
-            Expr::Val(_) => (),
+            Expr::Val(_) => None,
         }
-        e
     }
 
     pub fn rel(&self, cc: Cc, a: Expr, b: Expr) -> Formula {
