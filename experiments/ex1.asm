@@ -1,4 +1,3 @@
-; A straightline program that exercises division
 ;# requires is_buffer(r1, r2)
 ;# requires r2 > 0
 ;# requires is_buffer(r3, r4)
