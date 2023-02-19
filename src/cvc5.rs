@@ -1,25 +1,6 @@
-//! WhyML generation from formulas.
+//! CVC5 input generation from formulas.
 
 use crate::ast::*;
-
-pub struct Conditions(pub Vec<(String, Formula)>);
-
-impl std::fmt::Display for Conditions {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_str(
-            "use mach.int.UInt64\n\
-             use int.Int\n\
-             use int.ComputerDivision\n\
-             predicate is_buffer (p: uint64) (s: uint64)\n\n",
-        )?;
-        for (name, goal) in self.0.iter() {
-            f.write_fmt(format_args!(
-                "goal {name}: forall r0 r1 r2 r3 r4 r5 r6 r7 r8 r9 : uint64 . {goal}\n\n"
-            ))?;
-        }
-        Ok(())
-    }
-}
 
 impl std::fmt::Display for Expr {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -69,14 +50,14 @@ impl std::fmt::Display for Formula {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Formula::Val(b) => f.write_str(if *b { "true" } else { "false" }),
-            Formula::Not(form) => f.write_fmt(format_args!("not ({form})")),
+            Formula::Not(form) => f.write_fmt(format_args!("(not {form})")),
             Formula::Bin(op, fs) => {
                 let (f1, f2) = &**fs;
                 let op_str = match op {
-                    FBinOp::And => "/\\",
-                    FBinOp::Or => "\\/",
-                    FBinOp::Implies => "->",
-                    FBinOp::Iff => "<->",
+                    FBinOp::And => "and",
+                    FBinOp::Or => "or",
+                    FBinOp::Implies => "=>",
+                    FBinOp::Iff => "<=>",
                     FBinOp::AndAsym => "&&",
                 };
                 f.write_fmt(format_args!("({f1} {op_str} {f2})"))

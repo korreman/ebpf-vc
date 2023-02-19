@@ -7,6 +7,7 @@ use ebpf_vc::{
     formula::FormulaBuilder,
     parse::module,
     vc::vc,
+    whyml::Conditions,
 };
 
 #[derive(FromArgs)]
@@ -51,14 +52,6 @@ fn main() -> ExitCode {
     //eprintln!("{processed_ast:#?}\n");
 
     let vc_res = vc(processed_ast, &mut f);
-    println!(
-        "use mach.int.UInt64\n\
-        use int.Int\n\
-        use int.ComputerDivision\n\
-        predicate is_buffer (p: uint64) (s: uint64)\n"
-    );
-    for (name, f) in vc_res.iter() {
-        println!("goal {name}: forall r0 r1 r2 r3 r4 r5 r6 r7 r8 r9 : uint64 . {f}");
-    }
+    println!("{}", Conditions(vc_res));
     ExitCode::SUCCESS
 }

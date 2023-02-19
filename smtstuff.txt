@@ -1,0 +1,3 @@
+(set-logic BV)
+(set-option :produce-proofs true)
+(set-option :proof-format-mode lfsc)
