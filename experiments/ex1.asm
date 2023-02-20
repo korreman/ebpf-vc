@@ -1,13 +1,13 @@
-;# requires is_buffer(r1, r2)
-;# requires r2 > 0
-;# requires is_buffer(r3, r4)
-;# requires r4 > 0
+; This one should exercise module-wide pre- and post-conditions, arithmetic,
+; and div/modulo safety.
 
-    mov r5 r3
-    jle r2 r4 skip
-    mov r5 r1
-skip:
-    add r5 r2
-    sub r5 1
-    ldxb r0 [r5]
-    exit
+;# requires 0 <= r1
+;# requires r1 < r2
+
+mov r4 r2
+sub r4 r1
+add r3 493
+mul r3 504
+mod r3 r4
+mov r0 r3
+exit

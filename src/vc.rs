@@ -111,13 +111,8 @@ pub fn vc(module: Cfg, f: &mut FormulaBuilder) -> Vec<(String, Formula)> {
     }
 
     // Add the pre-condition of the starting block as a VC.
-    let entry_name = if module.start == "@0" {
-        "entry".to_owned()
-    } else {
-        module.start.clone()
-    };
     verif_conds.push((
-        entry_name,
+        "entry".to_owned(),
         match &pre_conds[&module.start] {
             BlockStatus::PreCond(c) => f.implies(module.requires, c.clone()),
             _ => panic!("starting block is never processed"),

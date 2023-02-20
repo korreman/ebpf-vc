@@ -1,1 +1,3 @@
-; Exercise some arithmetic, division
+; This should exercise memory access without branching
+
+exit

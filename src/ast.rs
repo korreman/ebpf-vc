@@ -77,7 +77,6 @@ pub enum Stmt {
     Call(Imm),
 }
 
-
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Cont {
     Jmp(Label),

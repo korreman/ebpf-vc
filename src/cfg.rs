@@ -8,8 +8,8 @@ use std::{
 };
 
 pub use crate::ast::{
-    BinAlu, Cc, Cont, Expr, Formula, Ident, Imm, Label, MemRef, Offset, Reg, RegImm, UnAlu,
-    WordSize, Stmt,
+    BinAlu, Cc, Cont, Expr, Formula, Ident, Imm, Label, MemRef, Offset, Reg, RegImm, Stmt, UnAlu,
+    WordSize,
 };
 
 use crate::{
