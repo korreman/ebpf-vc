@@ -202,7 +202,10 @@ fn cont(i: &str) -> Res<Cont> {
     );
 
     let jmp = map(
-        preceded(pair(tag("ja"), space1), ident.map(|id| id.to_owned())),
+        preceded(
+            pair(alt((tag("ja"), tag("jmp"))), space1),
+            ident.map(|id| id.to_owned()),
+        ),
         Cont::Jmp,
     );
     let exit = value(Cont::Exit, tag("exit"));

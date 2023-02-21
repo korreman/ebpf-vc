@@ -3,6 +3,7 @@ use argh::FromArgs;
 use std::{ffi::OsString, process::ExitCode, str::FromStr};
 
 use ebpf_vc::{
+    ast::Line,
     cfg::{Cfg, ConvertErr},
     formula::FormulaBuilder,
     parse::module,
@@ -16,7 +17,11 @@ struct EbpfVc {
     /// input to generate conditions for
     #[argh(positional)]
     file: OsString,
-    #[argh(option, description = "format to output proof obligations in")]
+    #[argh(
+        option,
+        description = "proof obligation format (default is whyml)",
+        default = "OutputFmt::WhyML"
+    )]
     format: OutputFmt,
 }
 
@@ -28,7 +33,7 @@ enum OutputFmt {
 impl FromStr for OutputFmt {
     type Err = &'static str;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let fmt = match s {
+        let fmt = match s.to_ascii_lowercase().as_str() {
             "whyml" => Self::WhyML,
             "cvc5" => Self::CVC5,
             _ => return Err("unknown output format"),
@@ -51,9 +56,15 @@ fn main() -> ExitCode {
 
     let parsed_file = module(contents.as_str());
     let ast = match parsed_file {
-        Ok((_, a)) => a,
-        Err(_) => {
-            eprintln!("error: Failed to parse module");
+        Ok((_, a)) => {
+            if a.lines.last() != Some(&Line::Cont(ebpf_vc::cfg::Cont::Exit)) {
+                eprintln!("error: module must end with an 'exit' instruction");
+                return ExitCode::FAILURE;
+            }
+            a
+        }
+        Err(e) => {
+            eprintln!("error: failed to parse module - {e}");
             return ExitCode::FAILURE;
         }
     };
@@ -73,7 +84,7 @@ fn main() -> ExitCode {
     let vc_res = vc(processed_ast, &mut f);
     match opts.format {
         OutputFmt::WhyML => println!("{}", whyml::Conditions(vc_res)),
-        OutputFmt::CVC5 => println!("Architecture currently cannot support both formats"), //println!("{}", Conditions(vc_res)),
+        OutputFmt::CVC5 => eprintln!("Architecture currently cannot support both formats"), //println!("{}", Conditions(vc_res)),
     }
     ExitCode::SUCCESS
 }

@@ -1,37 +1,41 @@
 ; Bubble sort
 
-;# requires is_buffer(r1, mul(r2, 8))
-;# requires r2 > 1
+;# requires is_buffer(r1, r2)
+;# requires r2 >= 16
 
 ; r3: index counter
 ; r4: epoch counter
-; r5: address
-; r6: preceding element location
-; r7: current element location
+; r5: address temporary
+; r6: preceding element temporary
+; r7: current element temporary
+; r8: size of valid addresses
 
     mov r4 0
+    mov r8 r2
+    sub r8 7
 outer_loop:
-;# req is_buffer(r1, mul(r2, 8))
+;# req r8 = sub(r2, 7)
+;# req is_buffer(r1, r2)
+;# req r2 >= 16
 ;# req r4 < r2
-    mov r3 1
+    mov r3 8
 
 inner_loop:
-;# req is_buffer(r1, mul(r2, 8))
-;# req r3 < r2
+;# req r8 = sub(r2, 7)
+;# req is_buffer(r1, r2)
+;# req 8 <= r3
+;# req r3 < r8
     mov r5 r3
-    mul r5 8
     add r5 r1
-; load the current and preceding value
     ldxdw r6 [r5 - 8]
     ldxdw r7 [r5]
-; swap them if they are ordered incorrectly
     jlt r6 r7 skipped
     stxdw [r5 - 8] r7
     stxdw [r5] r6
 skipped:
-    add r3 1
-    jlt r3 r2 inner_loop
-    add r4 1
+    add r3 8
+    jlt r3 r8 inner_loop
+    add r4 8
     jlt r4 r2 outer_loop
 
     mov r0 0
