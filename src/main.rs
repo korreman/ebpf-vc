@@ -17,11 +17,8 @@ struct EbpfVc {
     /// input to generate conditions for
     #[argh(positional)]
     file: OsString,
-    #[argh(
-        option,
-        description = "proof obligation format (default is whyml)",
-        default = "OutputFmt::WhyML"
-    )]
+    /// proof obligation format (default is WhyML)
+    #[argh(option, default = "OutputFmt::WhyML")]
     format: OutputFmt,
 }
 

@@ -15,7 +15,7 @@ pub fn vc(module: Cfg, f: &mut FormulaBuilder) -> Vec<(String, Formula)> {
     // Stores results.
     let mut verif_conds: Vec<(String, Formula)> = Vec::new();
 
-    // Stores cached pre-conditions for each block.
+    // Stores cached preconds for each block.
     // Also used to track which blocks have already been visited.
     let mut pre_conds: HashMap<Label, BlockStatus> = HashMap::new();
 
@@ -32,6 +32,7 @@ pub fn vc(module: Cfg, f: &mut FormulaBuilder) -> Vec<(String, Formula)> {
         }
         let block = &module.blocks[&label];
 
+        // This func attemps to retrieve the precond of another block.
         let mut get_post_cond = |target: &Label| {
             let b = pre_conds.get_mut(target);
             match b {
@@ -47,7 +48,7 @@ pub fn vc(module: Cfg, f: &mut FormulaBuilder) -> Vec<(String, Formula)> {
                         Some(f.top())
                     }
                 }
-                // If block isn't marked as anything, push it to the stack.
+                // If block isn't marked as anything, push the current block and it to the stack.
                 None => {
                     stack.push(label.clone());
                     stack.push(target.clone());
@@ -56,12 +57,12 @@ pub fn vc(module: Cfg, f: &mut FormulaBuilder) -> Vec<(String, Formula)> {
             }
         };
 
-        // Generate post-condition from continuation.
+        // Generate postcond from the continuation of the block.
         let post_cond = match &block.next {
             Continuation::Exit => Some(module.ensures.clone()),
             Continuation::Jmp(target) => get_post_cond(target),
             Continuation::Jcc(cc, lhs, rhs, target_t, target_f) => {
-                // First, get post-condition of the two targets.
+                // First, get postcond of the two targets.
                 let cond_t = get_post_cond(target_t);
                 let cond_f = get_post_cond(target_f);
 
@@ -82,12 +83,15 @@ pub fn vc(module: Cfg, f: &mut FormulaBuilder) -> Vec<(String, Formula)> {
                 })
             }
         };
+        // If the postcond couldn't be generated,
+        // both the current block and any jump targets have been pushed to the stack.
+        // We continue in order to handle new targets first.
         let post_cond = match post_cond {
             Some(c) => c,
             None => continue,
         };
 
-        // Perform WP-calculus on post-condition with block body.
+        // Perform WP-calculus on postcond with block body.
         let wp_result = wp(f, &block.body, post_cond);
 
         // Cache or use result of WP.
@@ -110,7 +114,7 @@ pub fn vc(module: Cfg, f: &mut FormulaBuilder) -> Vec<(String, Formula)> {
         }
     }
 
-    // Add the pre-condition of the starting block as a VC.
+    // Add the precond of the starting block as a VC.
     verif_conds.push((
         "entry".to_owned(),
         match &pre_conds[&module.start] {

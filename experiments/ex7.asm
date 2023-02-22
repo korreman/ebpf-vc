@@ -1,7 +1,5 @@
 ; Bubble sort
-
-;# requires is_buffer(r1, r2)
-;# requires r2 >= 16
+; Demonstrates a nested loop with memory access
 
 ; r3: index counter
 ; r4: epoch counter
@@ -9,6 +7,9 @@
 ; r6: preceding element temporary
 ; r7: current element temporary
 ; r8: size of valid addresses
+
+;# requires is_buffer(r1, r2)
+;# requires r2 >= 16
 
     mov r4 0
     mov r8 r2
