@@ -3,7 +3,6 @@ use argh::FromArgs;
 use std::{ffi::OsString, process::ExitCode, str::FromStr};
 
 use ebpf_vc::{
-    ast::Line,
     cfg::{Cfg, ConvertErr},
     formula::FormulaBuilder,
     parse::module,
@@ -53,13 +52,7 @@ fn main() -> ExitCode {
 
     let parsed_file = module(contents.as_str());
     let ast = match parsed_file {
-        Ok((_, a)) => {
-            if a.lines.last() != Some(&Line::Cont(ebpf_vc::cfg::Cont::Exit)) {
-                eprintln!("error: module must end with an 'exit' instruction");
-                return ExitCode::FAILURE;
-            }
-            a
-        }
+        Ok((_, a)) => a,
         Err(e) => {
             eprintln!("error: failed to parse module - {e}");
             return ExitCode::FAILURE;

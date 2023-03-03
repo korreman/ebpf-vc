@@ -40,6 +40,7 @@ pub struct Cfg {
 }
 
 pub enum ConvertErr {
+    NoExit,
     JumpBounds { target: usize, bound: usize },
     NoLabel(String),
     Unsupported(Stmt),
@@ -49,6 +50,7 @@ pub enum ConvertErr {
 impl Display for ConvertErr {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         match self {
+            ConvertErr::NoExit => f.write_fmt(format_args!("Last instruction must be \"exit\"")),
             ConvertErr::NoLabel(label) => {
                 f.write_fmt(format_args!("Jump target \"{label}\" doesn't exist"))
             }
@@ -139,6 +141,9 @@ impl State {
 impl Cfg {
     pub fn create(ast: Module, f: &mut FormulaBuilder) -> Result<Cfg, ConvertErr> {
         let mut state = State::new();
+        if ast.lines.last() != Some(&Line::Cont(Cont::Exit)) {
+            return Err(ConvertErr::NoExit);
+        }
         for line in ast.lines {
             match line {
                 Line::Label(l) => {
