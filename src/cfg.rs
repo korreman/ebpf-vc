@@ -45,6 +45,7 @@ pub enum ConvertErr {
     NoLabel(String),
     Unsupported(Stmt),
     MisplacedRequire,
+    DuplicateLabel(String),
 }
 
 impl Display for ConvertErr {
@@ -61,7 +62,10 @@ impl Display for ConvertErr {
                 f.write_fmt(format_args!("Unsupported instruction: {instr:?}"))
             }
             ConvertErr::MisplacedRequire => {
-                f.write_str("requirements can only be placed at the start of blocks")
+                f.write_str("Requirements can only be placed at the start of blocks")
+            }
+            ConvertErr::DuplicateLabel(label) => {
+                f.write_fmt(format_args!("Duplicate label \"{label}\""))
             }
         }
     }
@@ -88,7 +92,10 @@ impl State {
         }
     }
 
-    fn finish(&mut self, next: Continuation) {
+    fn finish(&mut self, next: Continuation) -> Result<(), ConvertErr> {
+        if self.blocks.contains_key(&self.label) {
+            return Err(ConvertErr::DuplicateLabel(self.label.clone()));
+        }
         let mut label = "".to_owned();
         let mut require = None;
         let mut body = Vec::new();
@@ -103,10 +110,10 @@ impl State {
                 next,
             },
         );
+        Ok(())
     }
 
     fn change_label(&mut self, l: Label) {
-        // TODO: resolve multiple occurrences of same label
         let mut tmp = l.clone();
         swap(&mut self.label, &mut tmp);
         self.label_aliases.insert(tmp, l);
@@ -148,7 +155,7 @@ impl Cfg {
             match line {
                 Line::Label(l) => {
                     if !state.body.is_empty() {
-                        state.finish(Continuation::Jmp(l.clone()));
+                        state.finish(Continuation::Jmp(l.clone()))?;
                     }
                     state.change_label(l);
                 }
@@ -168,7 +175,7 @@ impl Cfg {
                 Line::Cont(c) => match c {
                     // End of blocks
                     Cont::Jmp(t) => {
-                        state.finish(Continuation::Jmp(t));
+                        state.finish(Continuation::Jmp(t))?;
                         let next_label = state.next_label();
                         state.change_label(next_label)
                     }
@@ -180,10 +187,10 @@ impl Cfg {
                             reg_imm,
                             target,
                             next_label.clone(),
-                        ));
+                        ))?;
                         state.change_label(next_label);
                     }
-                    Cont::Exit => state.finish(Continuation::Exit),
+                    Cont::Exit => state.finish(Continuation::Exit)?,
                 },
             }
         }
