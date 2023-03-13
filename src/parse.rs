@@ -307,10 +307,7 @@ fn formula_line(i: &str) -> Res<Logic> {
         pair(tag(";#"), space0),
         alt((
             preceded(pair(tag("assert"), space0), map(formula, Logic::Assert)),
-            preceded(
-                pair(alt((tag("require"), tag("req"))), space0),
-                map(formula, Logic::Require),
-            ),
+            preceded(pair(tag("req"), space0), map(formula, Logic::Require)),
         )),
     )(i)
 }
