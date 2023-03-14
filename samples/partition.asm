@@ -18,26 +18,26 @@ loop:
 ; variant { j - i }
     jle r4 r3 return
 ; if not a[i] then incr i
-case_a:
+caseA:
     mov r5 r1
     add r5 r3
     ldxb r5 [r5]
-    jeq r5 0 case_b
+    jeq r5 0 caseB
     add r3 1
     ja continue
 ; else if a[j] then decr j
-case_b:
+caseB:
     mov r6 r1
     add r6 r4
     ldxb r6 [r6]
-    jne r6 0 case_c
+    jne r6 0 caseC
     sub r4 1
     ja continue
 ; else begin
 ;   swap a i j;
 ;   incr i;
 ;   decr j
-case_c:
+caseC:
     mov r7 r1
     add r7 r3
     stxb [r7] r6

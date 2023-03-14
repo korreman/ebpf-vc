@@ -93,7 +93,7 @@ fn reg_imm(i: &str) -> Res<RegImm> {
 
 fn offset(i: &str) -> Res<Offset> {
     alt((
-        preceded(pair(char('+'), space0), num),
+        preceded(pair(char('+'), space0), imm),
         preceded(pair(char('-'), space0), map(num, |n| -n)),
     ))(i)
 }

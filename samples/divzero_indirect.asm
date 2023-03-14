@@ -1,3 +1,4 @@
+    mov r0 0
     jeq r2 r3 skip  ; Ensure that r2 <> r3
     mov r1 r2
     sub r1 r3

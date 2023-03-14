@@ -10,10 +10,10 @@ c:
     ja R4
 R2:
     mov r0 r2
-    jmp end
+    ja end
 R3:
     mov r0 r3
-    jmp end
+    ja end
 R4:
     mov r0 r4
 end:

@@ -10,7 +10,6 @@
 
 ;# requires is_buffer(r1, r2)
 ;# requires r2 >= 16
-
     mov r4 0
     mov r8 r2
     sub r8 7
@@ -20,7 +19,6 @@ outer_loop:
 ;# req r2 >= 16
 ;# req r4 < r2
     mov r3 8
-
 inner_loop:
 ;# req r8 = sub(r2, 7)
 ;# req is_buffer(r1, r2)
@@ -38,6 +36,5 @@ skipped:
     jlt r3 r8 inner_loop
     add r4 8
     jlt r4 r2 outer_loop
-
     mov r0 0
     exit
