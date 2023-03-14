@@ -1,5 +1,5 @@
 ;# requires is_buffer(r1, r2)
-;# requires r2 = 32
+;# requires r2 = 64
     mov r0 0
     jge r4 1000 skip   ; avoid overflows
     mov r6 r4

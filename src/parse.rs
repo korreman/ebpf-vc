@@ -366,7 +366,7 @@ pub fn module(i: &str) -> Res<Module> {
     let components = tuple((
         many0(terminated(requirement, line_sep)),
         many0(terminated(ensurance, line_sep)),
-        separated_list0(line_sep, line),
+        preceded(space0, separated_list0(line_sep, line)),
     ));
     delimited(
         opt(line_sep),
