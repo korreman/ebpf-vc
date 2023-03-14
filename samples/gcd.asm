@@ -1,7 +1,9 @@
-;; Simple Euclids GCD, doesn't sanitize input
+;; Simple Euclids GCD, demonstrating a looping invariant
 ;; r1 - a
 ;; r2 - b
 
+    mov r1 r3
+    jeq r2, 0, end
 loop:
     ;# require r2 <> 0
     mov r3 r1

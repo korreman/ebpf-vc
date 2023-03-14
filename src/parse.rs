@@ -56,9 +56,25 @@ fn ident(i: &str) -> Res<&str> {
 // Instruction parsing
 
 fn reg(i: &str) -> Res<Reg> {
-    map_opt(preceded(char('r'), one_of("0123456789")), |c| {
-        Some(Reg::new(c.to_digit(10)? as u8))?
-    })(i)
+    map_opt(
+        preceded(
+            char('r'),
+            alt((
+                tag("10"),
+                tag("0"),
+                tag("1"),
+                tag("2"),
+                tag("3"),
+                tag("4"),
+                tag("5"),
+                tag("6"),
+                tag("7"),
+                tag("8"),
+                tag("9"),
+            )),
+        ),
+        |num: &str| Some(Reg::new(num.parse::<u8>().ok()?))?,
+    )(i)
 }
 
 fn imm(i: &str) -> Res<Imm> {

@@ -14,7 +14,7 @@ impl std::fmt::Display for Conditions {
         )?;
         for (name, goal) in self.0.iter() {
             f.write_fmt(format_args!(
-                "goal {name}: forall r0 r1 r2 r3 r4 r5 r6 r7 r8 r9 : uint64 . {goal}\n\n"
+                "goal {name}: forall r0 r1 r2 r3 r4 r5 r6 r7 r8 r9 r10 : uint64 . {goal}\n\n"
             ))?;
         }
         Ok(())

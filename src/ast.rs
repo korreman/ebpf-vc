@@ -37,9 +37,10 @@ impl Reg {
     pub const R7: Self = Reg(7);
     pub const R8: Self = Reg(8);
     pub const R9: Self = Reg(9);
+    pub const R10: Self = Reg(10);
 
     pub fn new(id: u8) -> Option<Self> {
-        if id < 10 {
+        if id < 11 {
             Some(Self(id))
         } else {
             None
