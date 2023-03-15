@@ -13,3 +13,5 @@ Build:
 Run:
 
     cargo run --release [file]
+
+See the shell scripts in `util` usage examples.

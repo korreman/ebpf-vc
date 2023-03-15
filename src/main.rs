@@ -74,7 +74,7 @@ fn main() -> ExitCode {
     let vc_res = vc(processed_ast, &mut f);
     match opts.format {
         OutputFmt::WhyML => println!("{}", whyml::Conditions(vc_res)),
-        OutputFmt::CVC5 => eprintln!("Architecture currently cannot support both formats"), //println!("{}", Conditions(vc_res)),
+        OutputFmt::CVC5 => eprintln!("Architecture currently cannot support both formats"),
     }
     ExitCode::SUCCESS
 }
