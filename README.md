@@ -14,4 +14,4 @@ Run:
 
     cargo run --release [file]
 
-See the shell scripts in `util` usage examples.
+See the shell scripts in `util` for usage examples.
