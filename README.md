@@ -1,5 +1,7 @@
 # `ebpf-vc` - Verification condition generation for eBPF
 
+See the [presentation slides](slides.pdf) for an overview and [report](report.pdf) for the details.
+
 Requirements:
 
 - Rust version 1.68
